@@ -10,14 +10,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -30,6 +38,8 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
+import foodyou.app.generated.resources.action_add_product_to_stash
+import foodyou.app.generated.resources.action_add_recipe_snapshot_to_stash
 import foodyou.app.generated.resources.action_view_stash
 import foodyou.app.generated.resources.description_home_stash_total_items
 import foodyou.app.generated.resources.description_home_stash_stashes
@@ -37,6 +47,7 @@ import foodyou.app.generated.resources.headline_stash
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_milliliter_short
 import foodyou.app.generated.resources.unit_stash_fraction_short
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -45,13 +56,42 @@ internal fun HomeStashCard(
     onConsumeItem: (StashItemId) -> Unit,
     onViewStash: (StashDefinitionId?) -> Unit,
     onAddProduct: (StashDefinitionId?) -> Unit,
+    onAddRecipeSnapshot: (StashDefinitionId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeStashCardViewModel = koinViewModel()
     val state = viewModel.state.collectAsStateWithLifecycle().value
+    var showAddSheet by rememberSaveable { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     if (!state.isVisible) {
         return
+    }
+
+    if (showAddSheet) {
+        val sheetState = rememberModalBottomSheetState()
+
+        ModalBottomSheet(
+            onDismissRequest = { showAddSheet = false },
+            sheetState = sheetState,
+        ) {
+            AddToStashSheet(
+                onAddProduct = {
+                    coroutineScope.launch {
+                        sheetState.hide()
+                        showAddSheet = false
+                        onAddProduct(state.preferredStashId)
+                    }
+                },
+                onAddRecipeSnapshot = {
+                    coroutineScope.launch {
+                        sheetState.hide()
+                        showAddSheet = false
+                        onAddRecipeSnapshot(state.preferredStashId)
+                    }
+                },
+            )
+        }
     }
 
     val totalItemsLabel =
@@ -87,7 +127,7 @@ internal fun HomeStashCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                FilledIconButton(onClick = { onAddProduct(state.preferredStashId) }) {
+                FilledIconButton(onClick = { showAddSheet = true }) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = stringResource(Res.string.action_add),
@@ -138,4 +178,25 @@ private fun StashQuantity.formatForHomeCard(): String {
         }
 
     return "${amount.formatClipZeros("%.1f")} $unitLabel"
+}
+
+@Composable
+private fun AddToStashSheet(
+    onAddProduct: () -> Unit,
+    onAddRecipeSnapshot: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        ListItem(
+            headlineContent = { Text(stringResource(Res.string.action_add_product_to_stash)) },
+            modifier = Modifier.clickable { onAddProduct() },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+        ListItem(
+            headlineContent = { Text(stringResource(Res.string.action_add_recipe_snapshot_to_stash)) },
+            modifier = Modifier.clickable { onAddRecipeSnapshot() },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+    }
 }

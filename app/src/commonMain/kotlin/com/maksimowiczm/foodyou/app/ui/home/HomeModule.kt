@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationV
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashCardViewModel
 import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotViewModel
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
@@ -50,6 +51,16 @@ fun Module.home() {
             stashRepository = get(),
             stashOwnerProvider = get(),
             addProductToStashUseCase = get(),
+        )
+    }
+    viewModel { (recipeId: FoodId.Recipe, preferredStashId: StashDefinitionId?) ->
+        HomeStashRecipeSnapshotViewModel(
+            recipeId = recipeId,
+            preferredStashId = preferredStashId,
+            recipeRepository = get(),
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+            createAnonymousDishSnapshotUseCase = get(),
         )
     }
 

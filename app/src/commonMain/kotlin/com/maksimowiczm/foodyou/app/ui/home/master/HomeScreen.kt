@@ -45,6 +45,7 @@ fun HomeScreen(
     onConsumeStashItemClick: (StashItemId) -> Unit,
     onViewStashClick: (StashDefinitionId?) -> Unit,
     onAddProductToStashClick: (StashDefinitionId?) -> Unit,
+    onAddRecipeSnapshotToStashClick: (StashDefinitionId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -119,6 +120,7 @@ fun HomeScreen(
                             onConsumeItem = onConsumeStashItemClick,
                             onViewStash = onViewStashClick,
                             onAddProduct = onAddProductToStashClick,
+                            onAddRecipeSnapshot = onAddRecipeSnapshotToStashClick,
                             modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
                         )
                 }

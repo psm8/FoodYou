@@ -9,11 +9,13 @@ import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
+import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
@@ -24,12 +26,15 @@ sealed interface CreateAnonymousDishSnapshotError {
 
     data class StashNotFound(val id: StashDefinitionId) : CreateAnonymousDishSnapshotError
 
+    data object StashSelectionRequired : CreateAnonymousDishSnapshotError
+
     data object NonPositiveQuantity : CreateAnonymousDishSnapshotError
 
     data object NonPositiveServings : CreateAnonymousDishSnapshotError
 }
 
 data class CreateAnonymousDishSnapshotResult(
+    val stashId: StashDefinitionId,
     val itemId: StashItemId,
 )
 
@@ -43,7 +48,7 @@ class CreateAnonymousDishSnapshotUseCase(
 ) {
     suspend fun create(
         recipeId: FoodId.Recipe,
-        stashId: StashDefinitionId,
+        stashId: StashDefinitionId? = null,
         totalAmount: StashQuantity,
         servings: Int,
     ): Result<CreateAnonymousDishSnapshotResult, CreateAnonymousDishSnapshotError> {
@@ -74,19 +79,42 @@ class CreateAnonymousDishSnapshotUseCase(
             }
 
             val ownerId = stashOwnerProvider.current()
-            val stash = stashRepository.observeStashes(ownerId).first().firstOrNull { it.id == stashId }
-            if (stash == null) {
-                return@withTransaction logger.logAndReturnFailure(
-                    tag = TAG,
-                    error = CreateAnonymousDishSnapshotError.StashNotFound(stashId),
-                    message = { "Stash with id $stashId not found." },
-                )
-            }
-
             val now = dateProvider.now()
+            val stashes = stashRepository.observeStashes(ownerId).first()
+            val targetStash =
+                when {
+                    stashId != null ->
+                        stashes.firstOrNull { it.id == stashId } ?: return@withTransaction logger.logAndReturnFailure(
+                            tag = TAG,
+                            error = CreateAnonymousDishSnapshotError.StashNotFound(stashId),
+                            message = { "Stash with id $stashId not found." },
+                        )
+
+                    stashes.isEmpty() -> {
+                        val defaultStash =
+                            StashDefinition.new(
+                                ownerId = ownerId,
+                                name = StashName.from(DEFAULT_STASH_NAME),
+                                createdAt = now,
+                                ordering = 0,
+                            )
+                        val createdStashId = stashRepository.insertStash(defaultStash)
+                        defaultStash.copy(id = createdStashId)
+                    }
+
+                    stashes.size == 1 -> stashes.single()
+
+                    else ->
+                        return@withTransaction logger.logAndReturnFailure(
+                            tag = TAG,
+                            error = CreateAnonymousDishSnapshotError.StashSelectionRequired,
+                            message = { "A stash must be selected when more than one stash exists." },
+                        )
+                }
+
             val item =
                 StashItem.new(
-                    stashId = stash.id,
+                    stashId = targetStash.id,
                     snapshot =
                         AnonymousDishSnapshot.from(
                             recipe = recipe,
@@ -99,7 +127,7 @@ class CreateAnonymousDishSnapshotUseCase(
             val itemId = stashRepository.insertItem(item)
             stashRepository.insertMovement(
                 StashMovement.new(
-                    stashId = stash.id,
+                    stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.CreateSnapshot,
                     quantityChange = totalAmount,
@@ -108,11 +136,12 @@ class CreateAnonymousDishSnapshotUseCase(
                 )
             )
 
-            Ok(CreateAnonymousDishSnapshotResult(itemId))
+            Ok(CreateAnonymousDishSnapshotResult(stashId = targetStash.id, itemId = itemId))
         }
     }
 
     private companion object {
         const val TAG = "CreateAnonymousDishSnapshotUseCase"
+        const val DEFAULT_STASH_NAME = "Stash"
     }
 }

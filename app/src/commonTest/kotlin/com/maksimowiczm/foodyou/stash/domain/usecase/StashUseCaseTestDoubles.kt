@@ -371,15 +371,24 @@ internal fun sampleRecipe(
     name: String = "Pizza",
     servings: Int = 4,
     totalWeight: Double = 400.0,
+    isLiquid: Boolean = false,
 ): Recipe {
-    val product = sampleProduct(id = 100L, packageWeight = totalWeight, servingWeight = totalWeight / servings, name = "Flour", brand = null)
+    val product =
+        sampleProduct(
+            id = 100L,
+            packageWeight = totalWeight,
+            servingWeight = totalWeight / servings,
+            name = "Flour",
+            brand = null,
+            isLiquid = isLiquid,
+        )
     return Recipe(
         id = FoodId.Recipe(id),
         name = name,
         servings = servings,
         ingredients = listOf(RecipeIngredient(product, Measurement.Gram(totalWeight))),
         note = "Bake hot",
-        isLiquid = false,
+        isLiquid = isLiquid,
     )
 }
 

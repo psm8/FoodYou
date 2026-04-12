@@ -71,13 +71,22 @@ data class AnonymousDishSnapshot(
             servingsMade: Int,
         ): AnonymousDishSnapshot {
             require(servingsMade > 0) { "Dish servings must be greater than 0" }
-            val batchMultiplier = servingsMade.toDouble() / recipe.servings.toDouble()
+            val totalWeight =
+                when (totalAmount.unit) {
+                    StashQuantityUnit.Fraction -> {
+                        val batchMultiplier = servingsMade.toDouble() / recipe.servings.toDouble()
+                        recipe.totalWeight * batchMultiplier
+                    }
+
+                    StashQuantityUnit.Gram,
+                    StashQuantityUnit.Milliliter -> totalAmount.amount
+                }
             return AnonymousDishSnapshot(
                 name = recipe.name,
                 nutritionFacts = recipe.nutritionFacts,
                 note = recipe.note,
                 isLiquid = recipe.isLiquid,
-                totalWeight = recipe.totalWeight * batchMultiplier,
+                totalWeight = totalWeight,
                 totalAmount = totalAmount,
             )
         }

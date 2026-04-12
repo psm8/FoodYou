@@ -209,6 +209,7 @@
     <string name="error_url_is_not_supported">URL is not supported</string>
     <string name="error_failed_to_download_product">Failed to download product</string>
     <string name="error_product_not_found">Product not found</string>
+    <string name="error_recipe_not_found">Recipe not found</string>
     <string name="error_unknown_error">Unknown error</string>
     <string name="error_measurement_error">Measurement error, please check the serving and package weight</string>
     <string name="error_api_key_is_invalid">API key is invalid</string>
