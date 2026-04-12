@@ -1,7 +1,17 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Success
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionId
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlin.test.Test
@@ -10,6 +20,24 @@ import kotlin.test.assertIs
 import kotlinx.coroutines.runBlocking
 
 class ShoppingSessionUseCaseTest {
+    @Test
+    fun when_starting_session_for_existing_stash_then_it_creates_an_empty_temporary_session() = runBlocking {
+        val stash = sampleStash(id = 7L, name = "Pantry")
+        val startUseCase =
+            StartShoppingSessionUseCase(
+                stashRepository = FakeStashRepository(initialStashes = listOf(stash)),
+                stashOwnerProvider = localOwnerProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val session = assertSuccess(startUseCase.start(stash.id))
+
+        assertEquals(stash.id, session.stashId)
+        assertEquals(emptyList(), session.items)
+        assertEquals(true, session.id.value.contains(stash.id.value.toString()))
+    }
+
     @Test
     fun when_adding_product_to_session_then_session_accumulates_items_and_running_nutrition() = runBlocking {
         val startUseCase =
@@ -32,62 +60,180 @@ class ShoppingSessionUseCaseTest {
                 logger = NoOpLogger,
             )
 
-        val started = assertIs<Success<ShoppingSession, StartShoppingSessionError>>(startUseCase.start(sampleStash().id)).data
+        val started = assertSuccess(startUseCase.start(sampleStash().id))
         val updated =
-            assertIs<Success<ShoppingSession, AddToShoppingSessionError>>(
+            assertSuccess(
                 addUseCase.add(
                     session = started,
-                    productId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Product(1),
+                    productId = FoodId.Product(1),
                     quantity = StashQuantity.grams(250.0),
                 )
-            ).data
+            )
 
         assertEquals(1, updated.items.size)
         assertEquals(250.0, updated.totalNutritionFacts.energy.value)
+        assertEquals(FoodId.Product(1), updated.items.single().productId)
     }
 
     @Test
-    fun when_confirming_session_then_all_items_are_added_to_stash_and_movements_are_recorded() = runBlocking {
-        val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash()))
+    fun when_confirming_a_session_with_five_items_then_everything_is_added_to_stash_and_diary_stays_untouched() = runBlocking {
+        val stash = sampleStash(name = "Fridge")
+        val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
+        val productRepository =
+            FakeProductRepository(
+                listOf(
+                    sampleProduct(id = 1L, name = "Skyr", nutritionFacts = nutritionWithEnergy(60.0)),
+                    sampleProduct(id = 2L, name = "Rice", nutritionFacts = nutritionWithEnergy(130.0)),
+                    sampleProduct(id = 3L, name = "Banana", nutritionFacts = nutritionWithEnergy(90.0)),
+                    sampleProduct(id = 4L, name = "Peanut Butter", nutritionFacts = nutritionWithEnergy(588.0)),
+                    sampleProduct(
+                        id = 5L,
+                        name = "Juice",
+                        isLiquid = true,
+                        nutritionFacts = nutritionWithEnergy(45.0),
+                    ),
+                )
+            )
+        val diaryRepository = FakeFoodDiaryEntryRepository(initialEntries = listOf(sampleDiaryEntry()))
+        val startUseCase = shoppingSessionStarter(stashRepository)
+        val addUseCase = AddToShoppingSessionUseCase(productRepository = productRepository, logger = NoOpLogger)
+        val confirmUseCase = shoppingSessionConfirmer(stashRepository)
+
+        val initialDiaryEntries = diaryRepository.allEntries()
+        var session = assertSuccess(startUseCase.start(stash.id))
+        session =
+            assertSuccess(
+                addUseCase.add(session = session, productId = FoodId.Product(1L), quantity = StashQuantity.grams(300.0))
+            )
+        session =
+            assertSuccess(
+                addUseCase.add(session = session, productId = FoodId.Product(2L), quantity = StashQuantity.grams(500.0))
+            )
+        session =
+            assertSuccess(
+                addUseCase.add(session = session, productId = FoodId.Product(3L), quantity = StashQuantity.grams(120.0))
+            )
+        session =
+            assertSuccess(
+                addUseCase.add(session = session, productId = FoodId.Product(4L), quantity = StashQuantity.grams(80.0))
+            )
+        session =
+            assertSuccess(
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(5L),
+                    quantity = StashQuantity.milliliters(750.0),
+                )
+            )
+
+        val insertedItemIds = assertSuccess(confirmUseCase.confirm(session))
+
+        assertEquals(5, insertedItemIds.size)
+        assertEquals(5, stashRepository.allItems().size)
+        assertEquals(5, stashRepository.allMovements().size)
+        assertEquals(
+            listOf(
+                StashQuantity.grams(300.0),
+                StashQuantity.grams(500.0),
+                StashQuantity.grams(120.0),
+                StashQuantity.grams(80.0),
+                StashQuantity.milliliters(750.0),
+            ),
+            stashRepository.allItems().map { it.quantity },
+        )
+        assertEquals(
+            List(5) { StashMovementOperation.Purchase },
+            stashRepository.allMovements().map { it.operation },
+        )
+        assertEquals(insertedItemIds, stashRepository.allMovements().map { it.itemId })
+        assertEquals(List(5) { null }, stashRepository.allMovements().map { it.linkedDiaryEntryId })
+        assertEquals(initialDiaryEntries, diaryRepository.allEntries())
+    }
+
+    @Test
+    fun when_confirming_fails_then_inserted_items_and_movements_are_rolled_back() = runBlocking {
+        val stash = sampleStash()
+        val stashRepository =
+            FakeStashRepository(
+                initialStashes = listOf(stash),
+                failOnMovementInsertAttempt = 2,
+            )
         val confirmUseCase =
             ConfirmShoppingSessionUseCase(
                 stashRepository = stashRepository,
                 stashOwnerProvider = localOwnerProvider(),
-                transactionProvider = FakeTransactionProvider(),
+                transactionProvider = SnapshottingFakeTransactionProvider(stashRepository),
                 dateProvider = FixedDateProvider(),
                 logger = NoOpLogger,
             )
         val session =
             ShoppingSession(
-                id = com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionId("session-1"),
-                stashId = sampleStash().id,
+                id = ShoppingSessionId("session-1"),
+                stashId = stash.id,
                 items =
                     listOf(
-                        com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem(
-                            productId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Product(1),
-                            snapshot = com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot.from(sampleProduct()),
+                        ShoppingSessionItem(
+                            id = ShoppingSessionItemId("session-item-1"),
+                            productId = FoodId.Product(1),
+                            snapshot = RawProductSnapshot.from(sampleProduct()),
                             quantity = StashQuantity.grams(200.0),
                         ),
-                        com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem(
-                            productId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Product(2),
-                            snapshot =
-                                com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot.from(
-                                    sampleProduct(id = 2, name = "Yoghurt")
-                                ),
+                        ShoppingSessionItem(
+                            id = ShoppingSessionItemId("session-item-2"),
+                            productId = FoodId.Product(2),
+                            snapshot = RawProductSnapshot.from(sampleProduct(id = 2, name = "Yoghurt")),
                             quantity = StashQuantity.grams(150.0),
                         ),
                     ),
             )
 
-        val result = confirmUseCase.confirm(session)
+        val failure =
+            assertIs<com.maksimowiczm.foodyou.common.result.Result.Error<List<StashItemId>, ConfirmShoppingSessionError>>(
+                confirmUseCase.confirm(session)
+            )
 
-        val success = assertIs<Success<List<com.maksimowiczm.foodyou.stash.domain.entity.StashItemId>, ConfirmShoppingSessionError>>(result)
-        assertEquals(2, success.data.size)
-        assertEquals(2, stashRepository.allItems().size)
-        assertEquals(2, stashRepository.allMovements().size)
-        assertEquals(
-            listOf(StashMovementOperation.Purchase, StashMovementOperation.Purchase),
-            stashRepository.allMovements().map { it.operation },
-        )
+        assertEquals(ConfirmShoppingSessionError.Unknown, failure.error)
+        assertEquals(emptyList(), stashRepository.allItems())
+        assertEquals(emptyList(), stashRepository.allMovements())
     }
+
+    private fun shoppingSessionStarter(stashRepository: FakeStashRepository): StartShoppingSessionUseCase =
+        StartShoppingSessionUseCase(
+            stashRepository = stashRepository,
+            stashOwnerProvider = localOwnerProvider(),
+            dateProvider = FixedDateProvider(),
+            logger = NoOpLogger,
+        )
+
+    private fun shoppingSessionConfirmer(stashRepository: FakeStashRepository): ConfirmShoppingSessionUseCase =
+        ConfirmShoppingSessionUseCase(
+            stashRepository = stashRepository,
+            stashOwnerProvider = localOwnerProvider(),
+            transactionProvider = SnapshottingFakeTransactionProvider(stashRepository),
+            dateProvider = FixedDateProvider(),
+            logger = NoOpLogger,
+        )
+
+    private fun sampleDiaryEntry(): FoodDiaryEntry =
+        FoodDiaryEntry(
+            id = FoodDiaryEntryId(11L),
+            mealId = 3L,
+            date = FIXED_NOW.date,
+            measurement = Measurement.Gram(150.0),
+            food =
+                DiaryFoodProduct(
+                    name = "Existing entry",
+                    nutritionFacts = nutritionWithEnergy(90.0),
+                    servingWeight = 150.0,
+                    totalWeight = 150.0,
+                    isLiquid = false,
+                    source = sampleProduct().source,
+                    note = null,
+                ),
+            createdAt = FIXED_NOW,
+            updatedAt = FIXED_NOW,
+        )
+
+    private fun <T, E> assertSuccess(result: com.maksimowiczm.foodyou.common.result.Result<T, E>): T =
+        assertIs<Success<T, E>>(result).data
 }

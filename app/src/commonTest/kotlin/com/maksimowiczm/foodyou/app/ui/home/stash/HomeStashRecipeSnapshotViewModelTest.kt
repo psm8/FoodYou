@@ -13,12 +13,15 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.NoOpLogger
 import com.maksimowiczm.foodyou.stash.domain.usecase.localOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRecipe
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.yield
 
 class HomeStashRecipeSnapshotViewModelTest {
@@ -152,5 +155,6 @@ class HomeStashRecipeSnapshotViewModelTest {
                     dateProvider = FixedDateProvider(),
                     logger = NoOpLogger,
                 ),
+            coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
         )
 }

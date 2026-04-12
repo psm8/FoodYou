@@ -47,6 +47,7 @@ internal class FakeStashRepository(
     initialStashes: List<StashDefinition> = emptyList(),
     initialItems: List<StashItem> = emptyList(),
     initialMovements: List<StashMovement> = emptyList(),
+    private val failOnMovementInsertAttempt: Int? = null,
 ) : StashRepository {
     private val stashes = initialStashes.associateBy { it.id.value }.toMutableMap()
     private val items = initialItems.associateBy { it.id.value }.toMutableMap()
@@ -54,6 +55,7 @@ internal class FakeStashRepository(
     private var nextStashId = (stashes.keys.maxOrNull() ?: 0L) + 1L
     private var nextItemId = (items.keys.maxOrNull() ?: 0L) + 1L
     private var nextMovementId = (movements.keys.maxOrNull() ?: 0L) + 1L
+    private var movementInsertAttempts = 0
 
     override fun observeStashes(ownerId: StashOwnerId): Flow<List<StashDefinition>> =
         flowOf(
@@ -115,6 +117,10 @@ internal class FakeStashRepository(
     }
 
     override suspend fun insertMovement(movement: StashMovement): StashMovementId {
+        movementInsertAttempts += 1
+        if (failOnMovementInsertAttempt == movementInsertAttempts) {
+            error("Failed to insert movement on attempt $movementInsertAttempts")
+        }
         val id = StashMovementId(nextMovementId++)
         movements[id.value] = movement.copy(id = id)
         return id
@@ -125,7 +131,41 @@ internal class FakeStashRepository(
     fun allItems(): List<StashItem> = items.values.sortedBy { it.id.value }
 
     fun allMovements(): List<StashMovement> = movements.values.sortedBy { it.id.value }
+
+    internal fun snapshotState(): FakeStashRepositoryState =
+        FakeStashRepositoryState(
+            stashes = stashes.toMap(),
+            items = items.toMap(),
+            movements = movements.toMap(),
+            nextStashId = nextStashId,
+            nextItemId = nextItemId,
+            nextMovementId = nextMovementId,
+            movementInsertAttempts = movementInsertAttempts,
+        )
+
+    internal fun restoreState(state: FakeStashRepositoryState) {
+        stashes.clear()
+        stashes.putAll(state.stashes)
+        items.clear()
+        items.putAll(state.items)
+        movements.clear()
+        movements.putAll(state.movements)
+        nextStashId = state.nextStashId
+        nextItemId = state.nextItemId
+        nextMovementId = state.nextMovementId
+        movementInsertAttempts = state.movementInsertAttempts
+    }
 }
+
+internal data class FakeStashRepositoryState(
+    val stashes: Map<Long, StashDefinition>,
+    val items: Map<Long, StashItem>,
+    val movements: Map<Long, StashMovement>,
+    val nextStashId: Long,
+    val nextItemId: Long,
+    val nextMovementId: Long,
+    val movementInsertAttempts: Int,
+)
 
 internal class FakeProductRepository(
     initialProducts: List<Product> = emptyList(),
@@ -315,6 +355,30 @@ internal class FakeTransactionProvider : TransactionProvider {
         } catch (exception: RollbackException) {
             exception.result as T
         }
+
+    private class FakeTransactionScope<T> : TransactionScope<T> {
+        override suspend fun rollback(result: T): Nothing = throw RollbackException(result)
+    }
+
+    private class RollbackException(val result: Any?) : RuntimeException()
+}
+
+internal class SnapshottingFakeTransactionProvider(
+    private vararg val stashRepositories: FakeStashRepository,
+) : TransactionProvider {
+    @Suppress("UNCHECKED_CAST")
+    override suspend fun <T> withTransaction(block: suspend TransactionScope<T>.() -> T): T {
+        val snapshots = stashRepositories.associateWith(FakeStashRepository::snapshotState)
+        return try {
+            block(FakeTransactionScope())
+        } catch (exception: RollbackException) {
+            snapshots.forEach { (repository, state) -> repository.restoreState(state) }
+            exception.result as T
+        } catch (exception: Throwable) {
+            snapshots.forEach { (repository, state) -> repository.restoreState(state) }
+            throw exception
+        }
+    }
 
     private class FakeTransactionScope<T> : TransactionScope<T> {
         override suspend fun rollback(result: T): Nothing = throw RollbackException(result)

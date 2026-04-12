@@ -41,6 +41,7 @@ import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
 import com.maksimowiczm.foodyou.app.ui.stash.browser.StashBrowserScreen
 import com.maksimowiczm.foodyou.app.ui.stash.consume.ConsumeStashItemScreen
 import com.maksimowiczm.foodyou.app.ui.stash.management.StashManagementScreen
+import com.maksimowiczm.foodyou.app.ui.stash.shopping.ShoppingSessionScreen
 import com.maksimowiczm.foodyou.app.ui.theme.ThemeScreen
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
@@ -124,6 +125,25 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onBack = { navController.popBackStackInclusive<StashManagement>() },
                 onOpenStash = { stashId ->
                     navController.navigateSingleTop(StashBrowser(stashId.value))
+                },
+                onStartShoppingSession = { stashId ->
+                    navController.navigateSingleTop(StashShopping(stashId.value))
+                },
+            )
+        }
+        forwardBackwardComposable<StashShopping> {
+            val (stashId) = it.toRoute<StashShopping>()
+
+            ShoppingSessionScreen(
+                preferredStashId = stashId,
+                onBack = { navController.popBackStackInclusive<StashShopping>() },
+                onFinished = { targetStashId ->
+                    navController.popBackStackInclusive<StashShopping>()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
+                onUpdateOpenFoodFactsCredentials = {
+                    navController.navigateSingleTop(OpenFoodFactsLogin)
                 },
             )
         }
@@ -510,6 +530,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object Language
 
 @Serializable private object StashManagement
+
+@Serializable private data class StashShopping(val stashId: Long)
 
 @Serializable private data class StashBrowser(val stashId: Long)
 

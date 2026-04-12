@@ -7,7 +7,10 @@ import kotlin.jvm.JvmInline
 
 @JvmInline value class ShoppingSessionId(val value: String)
 
+@JvmInline value class ShoppingSessionItemId(val value: String)
+
 data class ShoppingSessionItem(
+    val id: ShoppingSessionItemId,
     val productId: FoodId.Product,
     val snapshot: RawProductSnapshot,
     val quantity: StashQuantity,
@@ -22,5 +25,34 @@ data class ShoppingSession(
 ) {
     val totalNutritionFacts: NutritionFacts = items.map(ShoppingSessionItem::totalNutritionFacts).sum()
 
-    fun add(item: ShoppingSessionItem): ShoppingSession = copy(items = items + item)
+    fun add(
+        productId: FoodId.Product,
+        snapshot: RawProductSnapshot,
+        quantity: StashQuantity,
+    ): ShoppingSession =
+        copy(
+            items =
+                items +
+                    ShoppingSessionItem(
+                        id = ShoppingSessionItemId("${id.value}-item-${items.size + 1}"),
+                        productId = productId,
+                        snapshot = snapshot,
+                        quantity = quantity,
+                    )
+        )
+
+    fun updateQuantity(
+        itemId: ShoppingSessionItemId,
+        quantity: StashQuantity,
+    ): ShoppingSession =
+        copy(
+            items =
+                items.map { item ->
+                    if (item.id == itemId) {
+                        item.copy(quantity = quantity)
+                    } else {
+                        item
+                    }
+                }
+        )
 }

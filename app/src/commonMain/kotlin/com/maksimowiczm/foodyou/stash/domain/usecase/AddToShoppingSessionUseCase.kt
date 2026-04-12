@@ -8,7 +8,6 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
-import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlinx.coroutines.flow.first
 
@@ -54,15 +53,7 @@ class AddToShoppingSessionUseCase(
             )
         }
 
-        return Ok(
-            session.add(
-                ShoppingSessionItem(
-                    productId = product.id,
-                    snapshot = RawProductSnapshot.from(product),
-                    quantity = quantity,
-                )
-            )
-        )
+        return Ok(session.add(productId = product.id, snapshot = RawProductSnapshot.from(product), quantity = quantity))
     }
 
     private companion object {

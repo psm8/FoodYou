@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.app.ui.sponsor.sponsor
 import com.maksimowiczm.foodyou.app.ui.stash.browser.stashBrowserModule
 import com.maksimowiczm.foodyou.app.ui.stash.consume.consumeStashItemModule
 import com.maksimowiczm.foodyou.app.ui.stash.management.stashManagementModule
+import com.maksimowiczm.foodyou.app.ui.stash.shopping.shoppingSessionModule
 import com.maksimowiczm.foodyou.app.ui.theme.theme
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import org.koin.core.module.dsl.viewModel
@@ -35,6 +36,7 @@ val uiModule = module {
     sponsor()
     stashBrowserModule()
     stashManagementModule()
+    shoppingSessionModule()
     consumeStashItemModule()
     theme()
 }

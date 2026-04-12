@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,6 +76,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun StashManagementScreen(
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
+    onStartShoppingSession: (StashDefinitionId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StashManagementViewModel = koinViewModel()
@@ -84,6 +86,7 @@ fun StashManagementScreen(
         state = state,
         onBack = onBack,
         onOpenStash = onOpenStash,
+        onStartShoppingSession = onStartShoppingSession,
         onCreateStash = { name ->
             viewModel.updateDraft(name)
             viewModel.createStash()
@@ -100,6 +103,7 @@ private fun StashManagementScreen(
     state: StashManagementUiState,
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
+    onStartShoppingSession: (StashDefinitionId) -> Unit,
     onCreateStash: (String) -> Unit,
     onRenameStash: (StashDefinitionId, String) -> Unit,
     onDeleteStash: (StashDefinitionId) -> Unit,
@@ -274,6 +278,7 @@ private fun StashManagementScreen(
                         isDragging = isDragging,
                         lastModifiedLabel = dateFormatter.formatDateTime(stash.lastModifiedAt),
                         onOpen = { onOpenStash(stash.id) },
+                        onStartShoppingSession = { onStartShoppingSession(stash.id) },
                         onRename = {
                             renameDialogState = RenameDialogState(stashId = stash.id, name = stash.name)
                         },
@@ -293,6 +298,7 @@ private fun StashManagementRow(
     isDragging: Boolean,
     lastModifiedLabel: String,
     onOpen: () -> Unit,
+    onStartShoppingSession: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -337,6 +343,12 @@ private fun StashManagementRow(
                             )
                         }
                     } else {
+                        IconButton(onClick = onStartShoppingSession) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = stringResource(Res.string.headline_stash_shopping_session),
+                            )
+                        }
                         IconButton(onClick = onRename) {
                             Icon(
                                 imageVector = Icons.Default.Edit,

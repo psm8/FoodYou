@@ -20,6 +20,8 @@ sealed interface ConfirmShoppingSessionError {
 
     data class StashNotFound(val id: com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId) :
         ConfirmShoppingSessionError
+
+    data object Unknown : ConfirmShoppingSessionError
 }
 
 class ConfirmShoppingSessionUseCase(
@@ -40,43 +42,52 @@ class ConfirmShoppingSessionUseCase(
             )
         }
 
-        return transactionProvider.withTransaction {
-            val ownerId = stashOwnerProvider.current()
-            val stash = stashRepository.observeStashes(ownerId).first().firstOrNull { it.id == session.stashId }
-            if (stash == null) {
-                return@withTransaction logger.logAndReturnFailure(
-                    tag = TAG,
-                    error = ConfirmShoppingSessionError.StashNotFound(session.stashId),
-                    message = { "Stash with id ${session.stashId} not found." },
-                )
-            }
+        return try {
+            transactionProvider.withTransaction {
+                val ownerId = stashOwnerProvider.current()
+                val stash = stashRepository.observeStashes(ownerId).first().firstOrNull { it.id == session.stashId }
+                if (stash == null) {
+                    return@withTransaction logger.logAndReturnFailure(
+                        tag = TAG,
+                        error = ConfirmShoppingSessionError.StashNotFound(session.stashId),
+                        message = { "Stash with id ${session.stashId} not found." },
+                    )
+                }
 
-            val now = dateProvider.now()
-            val itemIds =
-                session.items.map { item ->
-                    val itemId =
-                        stashRepository.insertItem(
-                            StashItem.new(
+                val now = dateProvider.now()
+                val itemIds =
+                    session.items.map { item ->
+                        val itemId =
+                            stashRepository.insertItem(
+                                StashItem.new(
+                                    stashId = stash.id,
+                                    snapshot = item.snapshot,
+                                    quantity = item.quantity,
+                                    createdAt = now,
+                                )
+                            )
+                        stashRepository.insertMovement(
+                            StashMovement.new(
                                 stashId = stash.id,
-                                snapshot = item.snapshot,
-                                quantity = item.quantity,
+                                itemId = itemId,
+                                operation = StashMovementOperation.Purchase,
+                                quantityChange = item.quantity,
+                                linkedDiaryEntryId = null,
                                 createdAt = now,
                             )
                         )
-                    stashRepository.insertMovement(
-                        StashMovement.new(
-                            stashId = stash.id,
-                            itemId = itemId,
-                            operation = StashMovementOperation.Purchase,
-                            quantityChange = item.quantity,
-                            linkedDiaryEntryId = null,
-                            createdAt = now,
-                        )
-                    )
-                    itemId
-                }
+                        itemId
+                    }
 
-            Ok(itemIds)
+                Ok(itemIds)
+            }
+        } catch (exception: Exception) {
+            logger.logAndReturnFailure(
+                tag = TAG,
+                error = ConfirmShoppingSessionError.Unknown,
+                throwable = exception,
+                message = { "Failed to confirm shopping session ${session.id.value}." },
+            )
         }
     }
 

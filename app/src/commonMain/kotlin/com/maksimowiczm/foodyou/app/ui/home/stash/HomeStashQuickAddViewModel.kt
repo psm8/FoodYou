@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashError
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashUseCase
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -29,7 +30,9 @@ internal class HomeStashQuickAddViewModel(
     stashRepository: StashRepository,
     stashOwnerProvider: StashOwnerProvider,
     private val addProductToStashUseCase: AddProductToStashUseCase,
+    coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
+    private val scope = coroutineScope ?: viewModelScope
     private val ownerId = stashOwnerProvider.current()
     private val amount = MutableStateFlow("")
     private val selectedStashId = MutableStateFlow(preferredStashId)
@@ -67,8 +70,8 @@ internal class HomeStashQuickAddViewModel(
                 error = if (product == null) HomeStashQuickAddError.ProductNotFound else error,
             )
         }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(2_000),
+            scope = scope,
+            started = SharingStarted.Eagerly,
             initialValue = HomeStashQuickAddState(productId = productId),
         )
 
@@ -107,7 +110,7 @@ internal class HomeStashQuickAddViewModel(
             return
         }
 
-        viewModelScope.launch {
+        scope.launch {
             val result =
                 addProductToStashUseCase.add(
                     productId = productId,

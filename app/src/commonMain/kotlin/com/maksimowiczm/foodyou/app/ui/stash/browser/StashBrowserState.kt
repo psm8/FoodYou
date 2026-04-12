@@ -65,7 +65,10 @@ internal sealed interface StashBrowserActionDialog {
         val note: String = "",
     ) : StashBrowserActionDialog {
         fun toManualAction(): ManualStashAction =
-            ManualStashAction(reason = reason.ifBlank { "Remove item" }, note = note)
+            ManualStashAction(
+                reason = reason.normalizedOrDefault("Remove item"),
+                note = note.trim(),
+            )
     }
 
     data class ManualAdjust(
@@ -76,7 +79,10 @@ internal sealed interface StashBrowserActionDialog {
         val mode: StashBrowserAdjustMode = StashBrowserAdjustMode.ChangeBy,
     ) : StashBrowserActionDialog {
         fun toManualAction(): ManualStashAction =
-            ManualStashAction(reason = reason.ifBlank { "Adjust item" }, note = note)
+            ManualStashAction(
+                reason = reason.normalizedOrDefault("Adjust item"),
+                note = note.trim(),
+            )
     }
 
     data class Move(
@@ -87,8 +93,11 @@ internal sealed interface StashBrowserActionDialog {
     ) : StashBrowserActionDialog {
         fun toManualAction(targetStashName: String?): ManualStashAction =
             ManualStashAction(
-                reason = reason.ifBlank { targetStashName?.let { "Move to $it" } ?: "Move item" },
-                note = note,
+                reason =
+                    reason.normalizedOrDefault(
+                        targetStashName?.let { "Move to $it" } ?: "Move item"
+                    ),
+                note = note.trim(),
             )
     }
 
@@ -202,3 +211,5 @@ private inline fun <reified T : StashBrowserActionDialog> StashBrowserActionDial
     if (this !is T) return this
     return transform(this)
 }
+
+private fun String.normalizedOrDefault(default: String): String = trim().ifEmpty { default }

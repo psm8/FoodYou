@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotError
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -32,7 +33,9 @@ internal class HomeStashRecipeSnapshotViewModel(
     stashRepository: StashRepository,
     stashOwnerProvider: StashOwnerProvider,
     private val createAnonymousDishSnapshotUseCase: CreateAnonymousDishSnapshotUseCase,
+    coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
+    private val scope = coroutineScope ?: viewModelScope
     private val ownerId = stashOwnerProvider.current()
     private val totalAmount = MutableStateFlow("")
     private val servingsMade = MutableStateFlow("")
@@ -115,8 +118,8 @@ internal class HomeStashRecipeSnapshotViewModel(
                 )
             }
             .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(2_000),
+                scope = scope,
+                started = SharingStarted.Eagerly,
                 initialValue = HomeStashRecipeSnapshotState(recipeId = recipeId),
             )
 
@@ -160,7 +163,7 @@ internal class HomeStashRecipeSnapshotViewModel(
                 return
             }
 
-        viewModelScope.launch {
+        scope.launch {
             val result =
                 createAnonymousDishSnapshotUseCase.create(
                     recipeId = recipeId,
