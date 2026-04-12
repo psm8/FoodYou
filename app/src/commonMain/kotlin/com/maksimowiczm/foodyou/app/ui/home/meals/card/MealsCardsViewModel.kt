@@ -9,8 +9,8 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
-import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.DeleteFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +27,7 @@ import kotlinx.datetime.LocalDate
 
 internal class MealsCardsViewModel(
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
-    private val foodEntryRepository: FoodDiaryEntryRepository,
+    private val deleteFoodDiaryEntryUseCase: DeleteFoodDiaryEntryUseCase,
     private val manualEntryRepository: ManualDiaryEntryRepository,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
@@ -59,7 +59,7 @@ internal class MealsCardsViewModel(
     fun onDeleteEntry(model: MealEntryModel) {
         viewModelScope.launch {
             when (model) {
-                is FoodMealEntryModel -> foodEntryRepository.delete(model.id)
+                is FoodMealEntryModel -> deleteFoodDiaryEntryUseCase.delete(model.id)
                 is ManualMealEntryModel -> manualEntryRepository.delete(model.id)
             }
         }

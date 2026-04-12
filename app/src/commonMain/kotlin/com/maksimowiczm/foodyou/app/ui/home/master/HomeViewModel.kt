@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.master
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -13,7 +14,15 @@ import kotlinx.coroutines.runBlocking
 internal class HomeViewModel(settingsRepository: UserPreferencesRepository<Settings>) :
     ViewModel() {
 
-    private val _homeOrder = settingsRepository.observe().map { it.homeCardOrder }
+    private val _homeOrder =
+        settingsRepository.observe().map { settings ->
+            settings.homeCardOrder.filter { card ->
+                when (card) {
+                    HomeCard.Stash -> settings.showStashHomeCard
+                    else -> true
+                }
+            }
+        }
     val homeOrder =
         _homeOrder.stateIn(
             scope = viewModelScope,

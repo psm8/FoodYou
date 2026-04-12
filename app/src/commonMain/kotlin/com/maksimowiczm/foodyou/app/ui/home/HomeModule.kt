@@ -6,7 +6,11 @@ import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCardsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationViewModel
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashCardViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddViewModel
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 
@@ -15,7 +19,7 @@ fun Module.home() {
     viewModel {
         MealsCardsViewModel(
             observeDiaryMealsUseCase = get(),
-            foodEntryRepository = get(),
+            deleteFoodDiaryEntryUseCase = get(),
             manualEntryRepository = get(),
             mealsPreferencesRepository = userPreferencesRepository(),
         )
@@ -30,7 +34,24 @@ fun Module.home() {
             goalsRepository = get(),
         )
     }
-    viewModel { HomePersonalizationViewModel(settingsRepository = userPreferencesRepository()) }
+    viewModel {
+        HomePersonalizationViewModel(
+            settingsRepository = userPreferencesRepository(),
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+        )
+    }
+    viewModel { HomeStashCardViewModel(observeHomeStashSummaryUseCase = get()) }
+    viewModel { (productId: FoodId.Product, preferredStashId: StashDefinitionId?) ->
+        HomeStashQuickAddViewModel(
+            productId = productId,
+            preferredStashId = preferredStashId,
+            productRepository = get(),
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+            addProductToStashUseCase = get(),
+        )
+    }
 
     viewModel {
         PollsViewModel(

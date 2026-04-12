@@ -24,7 +24,10 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCards
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.rememberHomeState
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashCard
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -39,6 +42,9 @@ fun HomeScreen(
     onGoalsCardLongClick: () -> Unit,
     onGoalsCardClick: (epochDay: Long) -> Unit,
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
+    onConsumeStashItemClick: (StashItemId) -> Unit,
+    onViewStashClick: (StashDefinitionId?) -> Unit,
+    onAddProductToStashClick: (StashDefinitionId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -106,6 +112,14 @@ fun HomeScreen(
                             onLongClick = onMealCardLongClick,
                             contentPadding = PaddingValues(horizontal = 8.dp),
                             modifier = Modifier.padding(bottom = 8.dp),
+                        )
+
+                    HomeCard.Stash ->
+                        HomeStashCard(
+                            onConsumeItem = onConsumeStashItemClick,
+                            onViewStash = onViewStashClick,
+                            onAddProduct = onAddProductToStashClick,
+                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
                         )
                 }
             }

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,6 +48,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import org.jetbrains.compose.resources.stringResource
@@ -96,6 +99,18 @@ fun UpdateEntryScreen(
                 selectedMeasurement = entry.measurement,
             )
 
+        val selectedWeight = entry.food.weight(state.measurementState.measurement)
+        val returnableQuantity =
+            if (selectedWeight < entry.weight) {
+                if (entry.food.isLiquid) {
+                    StashQuantity.milliliters(entry.weight - selectedWeight)
+                } else {
+                    StashQuantity.grams(entry.weight - selectedWeight)
+                }
+            } else {
+                null
+            }
+
         UpdateEntryScreen(
             onBack = onBack,
             onUnpack = {
@@ -126,8 +141,23 @@ fun UpdateEntryScreen(
                     )
                 }
             },
+            onReturnRemainderToStash = {
+                val selectedMealId =
+                    state.mealsState.selectedMeal?.let { mealName ->
+                        meals.firstOrNull { it.name == mealName }?.id
+                    }
+
+                if (selectedMealId != null) {
+                    viewModel.returnRemainder(
+                        measurement = state.measurementState.measurement,
+                        mealId = selectedMealId,
+                        date = state.dateState.selectedDate,
+                    )
+                }
+            },
             state = state,
             entry = entry,
+            returnableQuantity = returnableQuantity,
             animatedVisibilityScope = animatedVisibilityScope,
             modifier = modifier,
         )
@@ -139,8 +169,10 @@ private fun UpdateEntryScreen(
     onBack: () -> Unit,
     onUnpack: () -> Unit,
     onSave: () -> Unit,
+    onReturnRemainderToStash: () -> Unit,
     state: FoodMeasurementFormState,
     entry: FoodDiaryEntry,
+    returnableQuantity: StashQuantity?,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
@@ -225,6 +257,16 @@ private fun UpdateEntryScreen(
                 MeasurementPicker(state = state.measurementState, modifier = Modifier.padding(8.dp))
             }
 
+            if (returnableQuantity != null) {
+                item {
+                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
+                    ReturnRemainderToStashSection(
+                        onReturnRemainderToStash = onReturnRemainderToStash,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+
             val food = entry.food
             if (food is DiaryFoodRecipe) {
                 item {
@@ -278,6 +320,30 @@ private fun UpdateEntryScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReturnRemainderToStashSection(
+    onReturnRemainderToStash: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(Res.string.headline_return_remainder_to_stash),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = stringResource(Res.string.description_return_remainder_to_stash),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        FilledTonalButton(
+            onClick = onReturnRemainderToStash,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(Res.string.action_send_remainder_to_stash))
         }
     }
 }

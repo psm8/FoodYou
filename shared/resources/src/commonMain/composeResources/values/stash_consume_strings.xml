@@ -1,0 +1,7 @@
+<resources>
+    <string name="message_consume_item_item_not_found">This stash item is no longer available.</string>
+    <string name="message_consume_item_no_meals">Create at least one meal before consuming stash items.</string>
+    <string name="message_consume_item_invalid_amount">Enter a valid amount to consume.</string>
+    <string name="message_consume_item_too_much">The selected amount is larger than what remains in the stash.</string>
+    <string name="message_consume_item_failed">Could not consume this stash item right now.</string>
+</resources>

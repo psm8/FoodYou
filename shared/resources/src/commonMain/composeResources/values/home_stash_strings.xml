@@ -1,0 +1,16 @@
+<resources>
+    <string name="headline_stash">Stash</string>
+    <string name="action_view_stash">View stash</string>
+    <string name="headline_add_product_to_stash">Add product to stash</string>
+    <string name="description_home_stash_stashes">Stashes: %1$s</string>
+    <string name="label_home_stash_add_amount">Amount (%1$s)</string>
+    <string name="label_home_stash_select">Choose stash</string>
+    <string name="message_home_stash_default_target">A default stash will be created automatically.</string>
+    <string name="message_home_stash_invalid_amount">Enter a valid amount to add.</string>
+    <string name="message_home_stash_select_stash">Choose a stash before saving.</string>
+    <string name="message_home_stash_save_failed">Could not add this product to the stash right now.</string>
+    <plurals name="description_home_stash_total_items">
+        <item quantity="one">%1$d item ready</item>
+        <item quantity="other">%1$d items ready</item>
+    </plurals>
+</resources>

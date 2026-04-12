@@ -14,6 +14,8 @@ import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryReposi
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UnpackFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UpdateFoodDiaryEntryUseCase
+import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.usecase.ReturnPartialMealToStashUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +32,7 @@ import kotlinx.datetime.LocalDate
 internal class UpdateFoodDiaryEntryViewModel(
     private val entryId: FoodDiaryEntryId,
     private val updateFoodDiaryEntryUseCase: UpdateFoodDiaryEntryUseCase,
+    private val returnPartialMealToStashUseCase: ReturnPartialMealToStashUseCase,
     private val unpackDiaryEntryError: UnpackFoodDiaryEntryUseCase,
     entryRepository: FoodDiaryEntryRepository,
     mealRepository: MealRepository,
@@ -97,8 +100,35 @@ internal class UpdateFoodDiaryEntryViewModel(
                     // Explode
                     error("Failed to update diary entry with id $entryId, $it")
                 }
+        }
+    }
 
-            _uiEvents.send(UpdateEntryEvent.Saved)
+    fun returnRemainder(measurement: Measurement, mealId: Long, date: LocalDate) {
+        viewModelScope.launch {
+            val currentEntry = entry.value ?: return@launch
+            val currentWeight = currentEntry.weight
+            val updatedWeight = currentEntry.food.weight(measurement)
+            if (updatedWeight >= currentWeight) {
+                return@launch
+            }
+
+            val quantityToReturn =
+                if (currentEntry.food.isLiquid) {
+                    StashQuantity.milliliters(currentWeight - updatedWeight)
+                } else {
+                    StashQuantity.grams(currentWeight - updatedWeight)
+                }
+
+            returnPartialMealToStashUseCase
+                .returnToStash(
+                    entryId = entryId,
+                    quantityToReturn = quantityToReturn,
+                    mealId = mealId,
+                    date = date,
+                ).onSuccess { _uiEvents.send(UpdateEntryEvent.Saved) }
+                .onError {
+                    error("Failed to return leftovers to stash for diary entry with id $entryId, $it")
+                }
         }
     }
 

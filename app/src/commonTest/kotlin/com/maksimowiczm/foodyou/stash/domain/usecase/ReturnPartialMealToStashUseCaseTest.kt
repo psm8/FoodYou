@@ -1,0 +1,167 @@
+package com.maksimowiczm.foodyou.stash.domain.usecase
+
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.result.Result.Success
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipeIngredient
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
+import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlinx.coroutines.runBlocking
+
+class ReturnPartialMealToStashUseCaseTest {
+    @Test
+    fun when_returning_part_of_a_consumed_raw_product_then_new_stash_item_is_created_and_entry_is_reduced() = runBlocking {
+        val product = sampleProduct()
+        val consumedItem = sampleRawProductItem(id = 1, quantity = StashQuantity.grams(0.0), product = product)
+        val entry = sampleProductEntry(product = product, measurement = Measurement.Gram(500.0))
+        val entryRepository = FakeFoodDiaryEntryRepository(initialEntries = listOf(entry))
+        val stashRepository =
+            FakeStashRepository(
+                initialStashes = listOf(sampleStash()),
+                initialItems = listOf(consumedItem),
+                initialMovements =
+                    listOf(
+                        StashMovement(
+                            id = StashMovementId(1),
+                            stashId = consumedItem.stashId,
+                            itemId = consumedItem.id,
+                            operation = StashMovementOperation.DirectConsume,
+                            quantityChange = StashQuantity.grams(-500.0),
+                            linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
+                            createdAt = FIXED_NOW,
+                        )
+                    ),
+            )
+        val useCase =
+            ReturnPartialMealToStashUseCase(
+                entryRepository = entryRepository,
+                stashRepository = stashRepository,
+                stashOwnerProvider = localOwnerProvider(),
+                transactionProvider = FakeTransactionProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.returnToStash(
+                entryId = entry.id,
+                quantityToReturn = StashQuantity.grams(200.0),
+            )
+
+        val success =
+            assertIs<Success<ReturnPartialMealToStashResult, ReturnPartialMealToStashError>>(result)
+        assertEquals(sampleStash().id, success.data.stashId)
+        assertEquals(
+            listOf(
+                StashQuantity.grams(0.0),
+                StashQuantity.grams(200.0),
+            ),
+            stashRepository.allItems().sortedBy { it.id.value }.map { it.quantity },
+        )
+        assertEquals(Measurement.Gram(300.0), entryRepository.allEntries().single().measurement)
+        assertEquals(
+            StashMovementOperation.ReturnToStash,
+            stashRepository.allMovements().last().operation,
+        )
+        val returnedSnapshot = stashRepository.allItems().maxBy { it.id.value }.snapshot
+        val rawProductSnapshot = assertIs<RawProductSnapshot>(returnedSnapshot)
+        assertEquals(product.id, rawProductSnapshot.productId)
+        assertEquals(product.name, rawProductSnapshot.name)
+    }
+
+    @Test
+    fun when_returning_part_of_a_recipe_entry_then_anonymous_dish_snapshot_is_created() = runBlocking {
+        val ingredient = sampleProduct()
+        val recipeFood =
+            DiaryFoodRecipe(
+                name = "Soup",
+                servings = 2,
+                ingredients =
+                    listOf(
+                        DiaryFoodRecipeIngredient(
+                            food =
+                                DiaryFoodProduct(
+                                    name = ingredient.headline,
+                                    nutritionFacts = ingredient.nutritionFacts,
+                                    servingWeight = ingredient.servingWeight,
+                                    totalWeight = ingredient.totalWeight,
+                                    isLiquid = ingredient.isLiquid,
+                                    source = ingredient.source,
+                                    note = ingredient.note,
+                                ),
+                            measurement = Measurement.Gram(500.0),
+                        )
+                    ),
+                isLiquid = false,
+                note = "Homemade",
+            )
+        val entry =
+            FoodDiaryEntry(
+                id = FoodDiaryEntryId(1),
+                mealId = sampleMeal().id,
+                date = FIXED_NOW.date,
+                measurement = Measurement.Serving(2.0),
+                food = recipeFood,
+                createdAt = FIXED_NOW,
+                updatedAt = FIXED_NOW,
+            )
+        val entryRepository = FakeFoodDiaryEntryRepository(initialEntries = listOf(entry))
+        val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash()))
+        val useCase =
+            ReturnPartialMealToStashUseCase(
+                entryRepository = entryRepository,
+                stashRepository = stashRepository,
+                stashOwnerProvider = localOwnerProvider(),
+                transactionProvider = FakeTransactionProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.returnToStash(
+                entryId = entry.id,
+                quantityToReturn = StashQuantity.grams(200.0),
+            )
+
+        assertIs<Success<ReturnPartialMealToStashResult, ReturnPartialMealToStashError>>(result)
+        assertEquals(Measurement.Serving(1.2), entryRepository.allEntries().single().measurement)
+        val snapshot = stashRepository.allItems().single().snapshot
+        val anonymousSnapshot = assertIs<AnonymousDishSnapshot>(snapshot)
+        assertEquals(StashQuantity.grams(200.0), anonymousSnapshot.totalAmount)
+        assertEquals(200.0, anonymousSnapshot.totalWeight)
+    }
+
+    private fun sampleProductEntry(
+        product: com.maksimowiczm.foodyou.food.domain.entity.Product,
+        measurement: Measurement,
+    ): FoodDiaryEntry =
+        FoodDiaryEntry(
+            id = FoodDiaryEntryId(1),
+            mealId = sampleMeal().id,
+            date = FIXED_NOW.date,
+            measurement = measurement,
+            food =
+                DiaryFoodProduct(
+                    name = product.headline,
+                    nutritionFacts = product.nutritionFacts,
+                    servingWeight = product.servingWeight,
+                    totalWeight = product.totalWeight,
+                    isLiquid = product.isLiquid,
+                    source = product.source,
+                    note = product.note,
+                ),
+            createdAt = FIXED_NOW,
+            updatedAt = FIXED_NOW,
+        )
+}

@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.common.domain.event.EventBus
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.extension.now
+import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.Food
@@ -20,15 +21,22 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestion
 import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.AssessRecipeStashAvailabilityUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.LogRecipeToMealWithStashSubtractionUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.RecipeStashAvailability
+import com.maksimowiczm.foodyou.stash.domain.usecase.StashSubtractionMode
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
@@ -37,6 +45,8 @@ import kotlinx.datetime.LocalDate
 
 internal class AddEntryViewModel(
     private val createFoodDiaryEntryUseCase: CreateFoodDiaryEntryUseCase,
+    private val assessRecipeStashAvailabilityUseCase: AssessRecipeStashAvailabilityUseCase,
+    private val logRecipeToMealWithStashSubtractionUseCase: LogRecipeToMealWithStashSubtractionUseCase,
     observeFoodUseCase: ObserveFoodUseCase,
     foodHistoryRepository: FoodHistoryRepository,
     private val deleteFoodUseCase: DeleteFoodUseCase,
@@ -49,6 +59,7 @@ internal class AddEntryViewModel(
 
     private val _uiEventBus = Channel<AddEntryEvent>()
     val uiEvents = _uiEventBus.receiveAsFlow()
+    private val selectedMeasurement = MutableStateFlow<Measurement?>(null)
 
     private val domainFood =
         observeFoodUseCase
@@ -135,6 +146,30 @@ internal class AddEntryViewModel(
                 initialValue = null,
             )
 
+    val recipeStashAvailability: StateFlow<RecipeStashAvailability?> =
+        combine(domainFood.filterNotNull(), selectedMeasurement) { food, measurement ->
+            food to measurement
+        }.mapLatest { (food, measurement) ->
+            if (food !is Recipe || measurement == null) {
+                return@mapLatest null
+            }
+
+            when (
+                val result = assessRecipeStashAvailabilityUseCase.assess(food.id, measurement)
+            ) {
+                is Result.Success -> result.data
+                is Result.Error -> error("Failed to assess recipe stash availability for ${food.id}: ${result.error}")
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = null,
+        )
+
+    fun setSelectedMeasurement(measurement: Measurement) {
+        selectedMeasurement.value = measurement
+    }
+
     fun deleteFood() {
         viewModelScope.launch {
             deleteFoodUseCase
@@ -147,36 +182,71 @@ internal class AddEntryViewModel(
         }
     }
 
-    fun addEntry(measurement: Measurement, mealId: Long, date: LocalDate) {
+    fun addEntry(
+        measurement: Measurement,
+        mealId: Long,
+        date: LocalDate,
+        subtractMode: StashSubtractionMode = StashSubtractionMode.Skip,
+    ) {
         viewModelScope.launch {
             val food = domainFood.firstOrNull()
             if (food == null) {
                 return@launch
             }
-            val diaryFood = food.toDiaryFood()
 
-            createFoodDiaryEntryUseCase
-                .createDiaryEntry(
-                    measurement = measurement,
-                    mealId = mealId,
-                    date = date,
-                    food = diaryFood,
-                )
-                .onSuccess {
-                    eventBus.publish(
-                        FoodDiaryEntryCreatedEvent(
-                            foodId = food.id,
-                            timestamp = dateProvider.nowInstant(),
-                            measurement = measurement,
-                        )
-                    )
-                    _uiEventBus.send(AddEntryEvent.EntryAdded)
-                }
-                .onError {
-                    // Explode
-                    error("Failed to create diary entry for food with ID ${food.id}")
-                }
+            when (food) {
+                is Recipe ->
+                    if (subtractMode != StashSubtractionMode.Skip) {
+                        logRecipeToMealWithStashSubtractionUseCase
+                            .log(
+                                recipeId = food.id,
+                                measurement = measurement,
+                                mealId = mealId,
+                                date = date,
+                                subtractMode = subtractMode,
+                            ).onSuccess {
+                                publishEntryCreated(food.id, measurement)
+                                _uiEventBus.send(AddEntryEvent.EntryAdded)
+                            }.onError { failure ->
+                                error("Failed to create stash-aware diary entry for recipe ${food.id}: $failure")
+                            }
+                    } else {
+                        createEntry(food = food, measurement = measurement, mealId = mealId, date = date)
+                    }
+
+                else -> createEntry(food = food, measurement = measurement, mealId = mealId, date = date)
+            }
         }
+    }
+
+    private suspend fun createEntry(
+        food: Food,
+        measurement: Measurement,
+        mealId: Long,
+        date: LocalDate,
+    ) {
+        createFoodDiaryEntryUseCase
+            .createDiaryEntry(
+                measurement = measurement,
+                mealId = mealId,
+                date = date,
+                food = food.toDiaryFood(),
+            ).onSuccess {
+                publishEntryCreated(food.id, measurement)
+                _uiEventBus.send(AddEntryEvent.EntryAdded)
+            }.onError {
+                error("Failed to create diary entry for food with ID ${food.id}")
+            }
+    }
+
+    private suspend fun publishEntryCreated(foodId: FoodId, measurement: Measurement) {
+        eventBus.publish(
+            FoodDiaryEntryCreatedEvent(
+                foodId = foodId,
+                timestamp = dateProvider.nowInstant(),
+                measurement = measurement,
+            )
+        )
     }
 
     fun unpack(measurement: Measurement, mealId: Long, date: LocalDate) {
