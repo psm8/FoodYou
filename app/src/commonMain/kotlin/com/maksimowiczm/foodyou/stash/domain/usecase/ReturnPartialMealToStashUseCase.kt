@@ -101,6 +101,8 @@ class ReturnPartialMealToStashUseCase(
                 )
             }
 
+            // Scale the existing measurement by ratio instead of subtracting raw grams so
+            // serving/package-based diary entries keep the same semantic unit after the return.
             val remainingRatio = (entryQuantity.amount - quantityToReturn.amount) / entryQuantity.amount
             if (remainingRatio <= EPSILON) {
                 return@withTransaction logger.logAndReturnFailure(
@@ -183,6 +185,8 @@ class ReturnPartialMealToStashUseCase(
         entry: FoodDiaryEntry,
         quantityToReturn: StashQuantity,
     ): StashSnapshot {
+        // Prefer the original linked stash snapshot when history still points to it so leftovers keep
+        // the same immutable product/recipe metadata as the consumed stock.
         val linkedSnapshot = findLinkedSnapshot(entry.id)
         return when (linkedSnapshot) {
             is RawProductSnapshot ->

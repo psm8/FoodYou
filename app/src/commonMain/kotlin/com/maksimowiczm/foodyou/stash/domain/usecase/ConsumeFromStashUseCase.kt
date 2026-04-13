@@ -65,6 +65,8 @@ class ConsumeFromStashUseCase(
             )
         }
 
+        // The diary entry, remaining stash quantity, and audit movement must commit together so
+        // linked edit/delete reversals always see a complete stash history.
         return transactionProvider.withTransaction {
             val item = stashRepository.getItem(itemId)
             if (item == null) {
@@ -188,6 +190,8 @@ class ConsumeFromStashUseCase(
         }
 
         return ConsumptionPlan(
+            // Dish snapshots may be stored as fractions of a batch, so weight-based consumption is
+            // converted back into the persisted fraction for later reversal/rebalance logic.
             quantityChange =
                 StashQuantity.fraction(
                     totalAmount.amount * (requestedAmount.amount / totalWeight)

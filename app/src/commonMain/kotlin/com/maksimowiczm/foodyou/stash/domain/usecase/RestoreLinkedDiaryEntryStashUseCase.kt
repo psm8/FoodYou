@@ -152,6 +152,8 @@ class RestoreLinkedDiaryEntryStashUseCase(
         linkedDiaryEntryId: LinkedDiaryEntryId,
         updatedWeightRatio: Double,
     ): Result<Unit, RestoreLinkedDiaryEntryStashError> {
+        // Rebalances scale the net stash effect per item instead of replaying each historical movement,
+        // which avoids compounding correction rows when the same diary entry is edited repeatedly.
         val linkedMovementsByItem =
             stashRepository
                 .getLinkedDiaryEntryMovements(linkedDiaryEntryId)
