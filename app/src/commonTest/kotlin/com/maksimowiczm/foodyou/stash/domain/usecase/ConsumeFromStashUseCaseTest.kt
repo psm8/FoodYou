@@ -115,13 +115,16 @@ class ConsumeFromStashUseCaseTest {
             )
 
         assertEquals(
-            ConsumeFromStashError.InsufficientQuantity,
+            ConsumeFromStashError.InsufficientQuantity(
+                available = StashQuantity.grams(100.0),
+                requested = StashQuantity.grams(250.0),
+            ),
             assertIs<Error<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result).error,
         )
     }
 
     @Test
-    fun when_consuming_exactly_all_available_quantity_then_item_is_preserved_at_zero_for_later_restore() = runBlocking {
+    fun when_consuming_exactly_all_available_raw_product_quantity_then_item_is_preserved_for_metadata_restore() = runBlocking {
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
@@ -145,7 +148,69 @@ class ConsumeFromStashUseCaseTest {
             )
 
         assertIs<Success<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result)
-        assertEquals(1, stashRepository.allItems().size)
-        assertEquals(StashQuantity.grams(0.0), stashRepository.allItems().single().quantity)
+        assertEquals(listOf(StashQuantity.grams(0.0)), stashRepository.allItems().map { it.quantity })
+    }
+
+    @Test
+    fun when_consumed_amount_exceeds_available_quantity_then_error_includes_requested_and_available_amounts() = runBlocking {
+        val useCase =
+            ConsumeFromStashUseCase(
+                stashRepository =
+                    FakeStashRepository(
+                        initialStashes = listOf(sampleStash()),
+                        initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(50.0))),
+                    ),
+                entryRepository = FakeFoodDiaryEntryRepository(),
+                mealRepository = FakeMealRepository(listOf(sampleMeal())),
+                transactionProvider = FakeTransactionProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.consume(
+                itemId = sampleRawProductItem().id,
+                mealId = sampleMeal().id,
+                amountEaten = StashQuantity.grams(100.0),
+            )
+
+        assertEquals(
+            ConsumeFromStashError.InsufficientQuantity(
+                available = StashQuantity.grams(50.0),
+                requested = StashQuantity.grams(100.0),
+            ),
+            assertIs<Error<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result).error,
+        )
+    }
+
+    @Test
+    fun when_recording_consumption_fails_then_stash_and_diary_changes_are_rolled_back() = runBlocking {
+        val stashRepository =
+            FakeStashRepository(
+                initialStashes = listOf(sampleStash()),
+                initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(500.0))),
+                failOnMovementInsertAttempt = 1,
+            )
+        val diaryRepository = FakeFoodDiaryEntryRepository()
+        val useCase =
+            ConsumeFromStashUseCase(
+                stashRepository = stashRepository,
+                entryRepository = diaryRepository,
+                mealRepository = FakeMealRepository(listOf(sampleMeal())),
+                transactionProvider = SnapshottingFakeTransactionProvider(stashRepository, diaryRepository),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        kotlin.test.assertFails {
+            useCase.consume(
+                itemId = sampleRawProductItem().id,
+                mealId = sampleMeal().id,
+                amountEaten = StashQuantity.grams(200.0),
+            )
+        }
+
+        assertEquals(listOf(StashQuantity.grams(500.0)), stashRepository.allItems().map { it.quantity })
+        assertEquals(emptyList(), diaryRepository.allEntries())
     }
 }

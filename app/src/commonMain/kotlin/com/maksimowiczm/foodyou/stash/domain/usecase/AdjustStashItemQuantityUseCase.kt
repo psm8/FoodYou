@@ -6,6 +6,8 @@ import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
+import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
@@ -83,7 +85,11 @@ class AdjustStashItemQuantityUseCase(
             }
 
             val updatedItem = item.copy(quantity = normalizedTarget)
-            stashRepository.updateItem(updatedItem)
+            if (updatedItem.quantity.amount <= EPSILON && updatedItem.canDeleteWhenEmpty()) {
+                stashRepository.deleteItem(updatedItem.id)
+            } else {
+                stashRepository.updateItem(updatedItem)
+            }
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = item.stashId,
@@ -103,6 +109,12 @@ class AdjustStashItemQuantityUseCase(
 
     private fun StashQuantity.isSameAmountAs(other: StashQuantity): Boolean =
         unit == other.unit && abs(amount - other.amount) <= EPSILON
+
+    private fun StashItem.canDeleteWhenEmpty(): Boolean =
+        when (val snapshot = snapshot) {
+            is RawProductSnapshot -> snapshot.productId == null
+            is AnonymousDishSnapshot -> true
+        }
 
     private companion object {
         const val TAG = "AdjustStashItemQuantityUseCase"

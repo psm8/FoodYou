@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConsumeFromStashError
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConsumeFromStashUseCase
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +32,9 @@ internal class ConsumeStashItemViewModel(
     mealRepository: MealRepository,
     dateProvider: DateProvider,
     private val consumeFromStashUseCase: ConsumeFromStashUseCase,
+    coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
+    private val scope = coroutineScope ?: viewModelScope
     private val initialDate = dateProvider.now().date
     private val item = MutableStateFlow<StashItem?>(null)
     private val itemLoaded = MutableStateFlow(false)
@@ -48,7 +51,7 @@ internal class ConsumeStashItemViewModel(
         mealRepository
             .observeMeals()
             .stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = emptyList(),
             )
@@ -57,7 +60,7 @@ internal class ConsumeStashItemViewModel(
         dateProvider
             .observeDate()
             .stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = initialDate,
             )
@@ -96,7 +99,7 @@ internal class ConsumeStashItemViewModel(
                 error = error,
             )
         }.stateIn(
-            scope = viewModelScope,
+            scope = scope,
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue =
                 ConsumeStashItemState(
@@ -127,6 +130,9 @@ internal class ConsumeStashItemViewModel(
     }
 
     fun consume() {
+        if (isSaving.value) {
+            return
+        }
         val currentState = state.value
         val mealId =
             currentState.selectedMealId ?: run {
@@ -140,7 +146,7 @@ internal class ConsumeStashItemViewModel(
             }
         val date = currentState.selectedDate
 
-        viewModelScope.launch {
+        scope.launch {
             isSaving.value = true
             error.value = null
 
@@ -161,7 +167,7 @@ internal class ConsumeStashItemViewModel(
     }
 
     private fun loadItem() {
-        viewModelScope.launch {
+        scope.launch {
             val loadedItem = stashRepository.getItem(itemId)
             item.value = loadedItem
             itemLoaded.value = true
@@ -178,7 +184,7 @@ internal class ConsumeStashItemViewModel(
     }
 
     private fun observeDefaultMeal() {
-        viewModelScope.launch {
+        scope.launch {
             meals.collect { availableMeals ->
                 val currentSelection = selectedMealId.value
                 if (currentSelection != null && availableMeals.any { it.id == currentSelection }) {
@@ -191,7 +197,7 @@ internal class ConsumeStashItemViewModel(
     }
 
     private fun observeDefaultDate() {
-        viewModelScope.launch {
+        scope.launch {
             today.collect { currentToday ->
                 selectedDate.update { it ?: currentToday }
             }
@@ -206,7 +212,11 @@ internal class ConsumeStashItemViewModel(
             ConsumeFromStashError.InvalidAmount,
             ConsumeFromStashError.MissingSnapshotWeight,
             -> ConsumeStashItemError.InvalidAmount
-            ConsumeFromStashError.InsufficientQuantity -> ConsumeStashItemError.InsufficientQuantity
+            is ConsumeFromStashError.InsufficientQuantity ->
+                ConsumeStashItemError.InsufficientQuantity(
+                    available = this.available,
+                    requested = this.requested,
+                )
         }
 }
 

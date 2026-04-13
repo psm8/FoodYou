@@ -37,6 +37,8 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -48,7 +50,7 @@ internal class FakeStashRepository(
     initialItems: List<StashItem> = emptyList(),
     initialMovements: List<StashMovement> = emptyList(),
     private val failOnMovementInsertAttempt: Int? = null,
-) : StashRepository {
+) : StashRepository, SnapshottingFakeTransactionProvider.StateRepository {
     private val stashes = initialStashes.associateBy { it.id.value }.toMutableMap()
     private val items = initialItems.associateBy { it.id.value }.toMutableMap()
     private val movements = initialMovements.associateBy { it.id.value }.toMutableMap()
@@ -132,7 +134,7 @@ internal class FakeStashRepository(
 
     fun allMovements(): List<StashMovement> = movements.values.sortedBy { it.id.value }
 
-    internal fun snapshotState(): FakeStashRepositoryState =
+    override fun snapshotState(): Any =
         FakeStashRepositoryState(
             stashes = stashes.toMap(),
             items = items.toMap(),
@@ -143,17 +145,18 @@ internal class FakeStashRepository(
             movementInsertAttempts = movementInsertAttempts,
         )
 
-    internal fun restoreState(state: FakeStashRepositoryState) {
+    override fun restoreState(state: Any) {
+        val snapshot = state as FakeStashRepositoryState
         stashes.clear()
-        stashes.putAll(state.stashes)
+        stashes.putAll(snapshot.stashes)
         items.clear()
-        items.putAll(state.items)
+        items.putAll(snapshot.items)
         movements.clear()
-        movements.putAll(state.movements)
-        nextStashId = state.nextStashId
-        nextItemId = state.nextItemId
-        nextMovementId = state.nextMovementId
-        movementInsertAttempts = state.movementInsertAttempts
+        movements.putAll(snapshot.movements)
+        nextStashId = snapshot.nextStashId
+        nextItemId = snapshot.nextItemId
+        nextMovementId = snapshot.nextMovementId
+        movementInsertAttempts = snapshot.movementInsertAttempts
     }
 }
 
@@ -276,7 +279,7 @@ internal class FakeRecipeRepository(
 
 internal class FakeFoodDiaryEntryRepository(
     initialEntries: List<FoodDiaryEntry> = emptyList(),
-) : FoodDiaryEntryRepository {
+) : FoodDiaryEntryRepository, SnapshottingFakeTransactionProvider.StateRepository {
     private val entries = initialEntries.associateBy { it.id.value }.toMutableMap()
     private var nextId = (entries.keys.maxOrNull() ?: 0L) + 1L
 
@@ -315,7 +318,21 @@ internal class FakeFoodDiaryEntryRepository(
     }
 
     fun allEntries(): List<FoodDiaryEntry> = entries.values.sortedBy { it.id.value }
+
+    override fun snapshotState(): Any = FakeFoodDiaryEntryRepositoryState(entries.toMap(), nextId)
+
+    override fun restoreState(state: Any) {
+        val snapshot = state as FakeFoodDiaryEntryRepositoryState
+        entries.clear()
+        entries.putAll(snapshot.entries)
+        nextId = snapshot.nextId
+    }
 }
+
+internal data class FakeFoodDiaryEntryRepositoryState(
+    val entries: Map<Long, FoodDiaryEntry>,
+    val nextId: Long,
+)
 
 internal class FakeMealRepository(
     initialMeals: List<Meal> = emptyList(),
@@ -364,21 +381,30 @@ internal class FakeTransactionProvider : TransactionProvider {
 }
 
 internal class SnapshottingFakeTransactionProvider(
-    private vararg val stashRepositories: FakeStashRepository,
+    private vararg val repositories: StateRepository,
 ) : TransactionProvider {
-    @Suppress("UNCHECKED_CAST")
-    override suspend fun <T> withTransaction(block: suspend TransactionScope<T>.() -> T): T {
-        val snapshots = stashRepositories.associateWith(FakeStashRepository::snapshotState)
-        return try {
-            block(FakeTransactionScope())
-        } catch (exception: RollbackException) {
-            snapshots.forEach { (repository, state) -> repository.restoreState(state) }
-            exception.result as T
-        } catch (exception: Throwable) {
-            snapshots.forEach { (repository, state) -> repository.restoreState(state) }
-            throw exception
-        }
+    interface StateRepository {
+        fun snapshotState(): Any
+
+        fun restoreState(state: Any)
     }
+
+    private val mutex = Mutex()
+
+    @Suppress("UNCHECKED_CAST")
+    override suspend fun <T> withTransaction(block: suspend TransactionScope<T>.() -> T): T =
+        mutex.withLock {
+            val snapshots = repositories.associateWith(StateRepository::snapshotState)
+            try {
+                block(FakeTransactionScope())
+            } catch (exception: RollbackException) {
+                snapshots.forEach { (repository, state) -> repository.restoreState(state) }
+                exception.result as T
+            } catch (exception: Throwable) {
+                snapshots.forEach { (repository, state) -> repository.restoreState(state) }
+                throw exception
+            }
+        }
 
     private class FakeTransactionScope<T> : TransactionScope<T> {
         override suspend fun rollback(result: T): Nothing = throw RollbackException(result)

@@ -43,7 +43,75 @@ class ManageStashItemsUseCaseTest {
         }
 
     @Test
-    fun `when removing item, it leaves a zero quantity row and logs the full removal`() =
+    fun `when manually adjusting product-backed raw item to zero, it preserves the row for metadata restore`() =
+        runBlocking {
+            val item = sampleRawProductItem(quantity = StashQuantity.grams(500.0))
+            val repository =
+                FakeStashRepository(
+                    initialStashes = listOf(sampleStash()),
+                    initialItems = listOf(item),
+                )
+            val useCase =
+                AdjustStashItemQuantityUseCase(
+                    stashRepository = repository,
+                    stashOwnerProvider = localOwnerProvider(),
+                    dateProvider = FixedDateProvider(),
+                    transactionProvider = transactionProvider,
+                    logger = NoOpLogger,
+                )
+
+            val result =
+                useCase.adjust(
+                    itemId = item.id,
+                    adjustment = StashQuantityAdjustment.ChangeBy(StashQuantity.grams(-500.0)),
+                    action = ManualStashAction(reason = "Correction"),
+                )
+
+            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            assertEquals(StashQuantity.grams(0.0), updated.quantity)
+            assertEquals(1, repository.allItems().size)
+            assertEquals(item.snapshot, repository.allItems().single().snapshot)
+            assertEquals(StashQuantity.grams(0.0), repository.allItems().single().quantity)
+            val movement = repository.allMovements().single()
+            assertEquals(StashQuantity.grams(-500.0), movement.quantityChange)
+            assertEquals("Correction", movement.note)
+        }
+
+    @Test
+    fun `when manually adjusting anonymous dish item to zero, it deletes the item`() =
+        runBlocking {
+            val item = sampleAnonymousDishItem(quantity = StashQuantity.fraction(1.0))
+            val repository =
+                FakeStashRepository(
+                    initialStashes = listOf(sampleStash()),
+                    initialItems = listOf(item),
+                )
+            val useCase =
+                AdjustStashItemQuantityUseCase(
+                    stashRepository = repository,
+                    stashOwnerProvider = localOwnerProvider(),
+                    dateProvider = FixedDateProvider(),
+                    transactionProvider = transactionProvider,
+                    logger = NoOpLogger,
+                )
+
+            val result =
+                useCase.adjust(
+                    itemId = item.id,
+                    adjustment = StashQuantityAdjustment.ChangeBy(StashQuantity.fraction(-1.0)),
+                    action = ManualStashAction(reason = "Finished"),
+                )
+
+            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            assertEquals(StashQuantity.fraction(0.0), updated.quantity)
+            assertEquals(emptyList(), repository.allItems())
+            val movement = repository.allMovements().single()
+            assertEquals(StashQuantity.fraction(-1.0), movement.quantityChange)
+            assertEquals("Finished", movement.note)
+        }
+
+    @Test
+    fun `when removing item, it deletes the item and logs the full removal`() =
         runBlocking {
             val item = sampleRawProductItem(quantity = StashQuantity.grams(250.0))
             val repository =
@@ -68,6 +136,7 @@ class ManageStashItemsUseCaseTest {
 
             val removed = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
             assertEquals(0.0, removed.quantity.amount)
+            assertEquals(emptyList(), repository.allItems())
             val movement = repository.allMovements().single()
             assertEquals(-250.0, movement.quantityChange.amount)
             assertEquals("Discarded\nExpired yesterday", movement.note)

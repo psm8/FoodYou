@@ -83,7 +83,7 @@ internal class RoomStashRepository(
         }
 
     override suspend fun updateItem(item: StashItem) {
-        stashItemDao.updateStashItem(item.toEntity())
+        stashItemDao.upsertStashItem(item.toEntity())
     }
 
     override suspend fun deleteItem(id: StashItemId) {

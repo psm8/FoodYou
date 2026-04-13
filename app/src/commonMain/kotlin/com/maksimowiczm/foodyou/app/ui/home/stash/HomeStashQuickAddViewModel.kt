@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -157,18 +158,7 @@ internal data class HomeStashQuickAddState(
         get() = stashes.size > 1
 
     val parsedQuantity: StashQuantity?
-        get() {
-            val parsedAmount = amount.toDoubleOrNull() ?: return null
-            if (parsedAmount <= 0.0) {
-                return null
-            }
-
-            return when (unit) {
-                StashQuantityUnit.Gram -> StashQuantity.grams(parsedAmount)
-                StashQuantityUnit.Milliliter -> StashQuantity.milliliters(parsedAmount)
-                StashQuantityUnit.Fraction -> StashQuantity.fraction(parsedAmount)
-            }
-        }
+        get() = amount.toStashQuantityOrNull(unit)
 
     val canSave: Boolean
         get() =

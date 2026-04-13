@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.app.ui.stash.displayLabel
+import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
@@ -522,21 +524,8 @@ private fun StashBrowserItemType.badgeLabel(): String =
     }
 
 @Composable
-private fun StashQuantity.label(): String =
-    when (unit) {
-        StashQuantityUnit.Gram ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_gram_short)}"
-        StashQuantityUnit.Milliliter ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_milliliter_short)}"
-        StashQuantityUnit.Fraction ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_stash_fraction_short)}"
-    }
+private fun StashQuantity.label(): String = displayLabel()
 
 private fun StashQuantityUnit.toQuantityOrNull(amountText: String): StashQuantity? {
-    val amount = amountText.toDoubleOrNull() ?: return null
-    return when (this) {
-        StashQuantityUnit.Gram -> StashQuantity.grams(amount)
-        StashQuantityUnit.Milliliter -> StashQuantity.milliliters(amount)
-        StashQuantityUnit.Fraction -> StashQuantity.fraction(amount)
-    }
+    return amountText.toStashQuantityOrNull(unit = this, requirePositive = false)
 }

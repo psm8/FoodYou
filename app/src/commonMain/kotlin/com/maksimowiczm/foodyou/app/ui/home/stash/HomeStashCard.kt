@@ -31,11 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
-import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.app.ui.stash.displayLabel
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
 import foodyou.app.generated.resources.action_add_product_to_stash
@@ -169,16 +168,7 @@ internal fun HomeStashCard(
 }
 
 @Composable
-private fun StashQuantity.formatForHomeCard(): String {
-    val unitLabel =
-        when (unit) {
-            StashQuantityUnit.Gram -> stringResource(Res.string.unit_gram_short)
-            StashQuantityUnit.Milliliter -> stringResource(Res.string.unit_milliliter_short)
-            StashQuantityUnit.Fraction -> stringResource(Res.string.unit_stash_fraction_short)
-        }
-
-    return "${amount.formatClipZeros("%.1f")} $unitLabel"
-}
+private fun StashQuantity.formatForHomeCard(): String = displayLabel()
 
 @Composable
 private fun AddToStashSheet(

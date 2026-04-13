@@ -2,9 +2,9 @@ package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
@@ -189,12 +189,6 @@ internal class StashBrowserViewModel(
     private val StashBrowserItem.quantityUnit: StashQuantityUnit
         get() = quantity.unit
 
-    private fun StashQuantityUnit.toQuantity(amountText: String): StashQuantity? {
-        val amount = amountText.toDoubleOrNull() ?: return null
-        return when (this) {
-            StashQuantityUnit.Gram -> StashQuantity.grams(amount)
-            StashQuantityUnit.Milliliter -> StashQuantity.milliliters(amount)
-            StashQuantityUnit.Fraction -> StashQuantity.fraction(amount)
-        }
-    }
+    private fun StashQuantityUnit.toQuantity(amountText: String) =
+        amountText.toStashQuantityOrNull(unit = this, requirePositive = false)
 }

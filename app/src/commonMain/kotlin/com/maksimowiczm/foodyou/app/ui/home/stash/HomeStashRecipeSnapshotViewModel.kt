@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.home.stash
 
+import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -80,7 +81,7 @@ internal class HomeStashRecipeSnapshotViewModel(
                     formInputs.amountUnit.takeIf(availableUnits::contains) ?: availableUnits.first()
                 val resolvedServingsMade =
                     formInputs.servingsMade.ifBlank { recipe?.servings?.toString().orEmpty() }
-                val parsedQuantity = formInputs.totalAmount.toQuantityOrNull(resolvedAmountUnit)
+                val parsedQuantity = formInputs.totalAmount.toStashQuantityOrNull(resolvedAmountUnit)
                 val parsedServings = resolvedServingsMade.toPositiveIntOrNull()
                 val previewSnapshot =
                     if (recipe != null && parsedQuantity != null && parsedServings != null) {
@@ -225,7 +226,7 @@ internal data class HomeStashRecipeSnapshotState(
         get() = stashes.size > 1
 
     val parsedQuantity: StashQuantity?
-        get() = totalAmount.toQuantityOrNull(amountUnit)
+        get() = totalAmount.toStashQuantityOrNull(amountUnit)
 
     val parsedServings: Int?
         get() = servingsMade.toPositiveIntOrNull()
@@ -256,19 +257,6 @@ internal sealed interface HomeStashRecipeSnapshotEvent {
 
 private val AnonymousDishSnapshot.totalNutritionFacts: NutritionFacts
     get() = nutritionFacts * (totalWeight / 100.0)
-
-private fun String.toQuantityOrNull(unit: StashQuantityUnit): StashQuantity? {
-    val parsedAmount = toDoubleOrNull() ?: return null
-    if (parsedAmount <= 0.0) {
-        return null
-    }
-
-    return when (unit) {
-        StashQuantityUnit.Gram -> StashQuantity.grams(parsedAmount)
-        StashQuantityUnit.Milliliter -> StashQuantity.milliliters(parsedAmount)
-        StashQuantityUnit.Fraction -> StashQuantity.fraction(parsedAmount)
-    }
-}
 
 private fun String.toPositiveIntOrNull(): Int? {
     val parsedValue = toIntOrNull() ?: return null

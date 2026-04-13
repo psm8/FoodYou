@@ -21,11 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.app.ui.stash.displayLabel
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberChipsDatePickerState
 import com.maksimowiczm.foodyou.common.compose.extension.add
-import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
@@ -202,21 +202,17 @@ private fun errorMessage(error: ConsumeStashItemError): String =
             stringResource(Res.string.message_consume_item_no_meals)
         ConsumeStashItemError.InvalidAmount ->
             stringResource(Res.string.message_consume_item_invalid_amount)
-        ConsumeStashItemError.InsufficientQuantity ->
-            stringResource(Res.string.message_consume_item_too_much)
+        is ConsumeStashItemError.InsufficientQuantity ->
+            stringResource(
+                Res.string.message_consume_item_insufficient_quantity_detail,
+                error.available.displayLabel(),
+                error.requested.displayLabel(),
+            )
         ConsumeStashItemError.Unknown -> stringResource(Res.string.message_consume_item_failed)
     }
 
 @Composable
-private fun StashQuantity.label(): String =
-    when (unit) {
-        StashQuantityUnit.Gram ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_gram_short)}"
-        StashQuantityUnit.Milliliter ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_milliliter_short)}"
-        StashQuantityUnit.Fraction ->
-            "${amount.formatClipZeros()} ${stringResource(Res.string.unit_stash_fraction_short)}"
-    }
+private fun StashQuantity.label(): String = displayLabel()
 
 @Composable
 private fun StashQuantityUnit.label(): String =

@@ -6,12 +6,20 @@ import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashSnapshot
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlin.math.abs
 
@@ -45,6 +53,7 @@ class RestoreLinkedDiaryEntryStashUseCase(
         }
 
         return applyEditRebalance(
+            entry = entry,
             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
             updatedWeightRatio = (updatedWeight / previousWeight).coerceAtLeast(0.0),
         )
@@ -52,6 +61,7 @@ class RestoreLinkedDiaryEntryStashUseCase(
 
     suspend fun restoreAll(entry: FoodDiaryEntry): Result<Unit, RestoreLinkedDiaryEntryStashError> =
         reverseMovements(
+            entry = entry,
             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
             movementsFilter = { true },
             restoreRatio = 1.0,
@@ -59,6 +69,7 @@ class RestoreLinkedDiaryEntryStashUseCase(
         )
 
     private suspend fun reverseMovements(
+        entry: FoodDiaryEntry,
         linkedDiaryEntryId: LinkedDiaryEntryId,
         movementsFilter: (StashMovement) -> Boolean,
         restoreRatio: Double,
@@ -71,13 +82,13 @@ class RestoreLinkedDiaryEntryStashUseCase(
 
         val now = dateProvider.now()
         linkedMovements.forEach { movement ->
-            val reversalQuantity = movement.quantityChange.negate().scale(restoreRatio)
+            val reversalQuantity = movement.quantityChange.negate().scale(restoreRatio).normalize()
             if (abs(reversalQuantity.amount) <= EPSILON) {
                 return@forEach
             }
 
             val item = stashRepository.getItem(movement.itemId)
-            if (item == null) {
+            if (item == null && reversalQuantity.amount <= 0.0) {
                 return logger.logAndReturnFailure(
                     tag = TAG,
                     error = RestoreLinkedDiaryEntryStashError.LinkedItemNotFound(movement.itemId),
@@ -85,9 +96,17 @@ class RestoreLinkedDiaryEntryStashUseCase(
                 )
             }
 
-            val updatedItem =
-                if (reversalQuantity.amount > 0.0) {
-                    item.copy(quantity = item.quantity + reversalQuantity)
+            val targetItem =
+                if (item == null) {
+                    createLinkedItem(
+                        entry = entry,
+                        itemId = movement.itemId,
+                        stashId = movement.stashId,
+                        quantity = reversalQuantity,
+                        createdAt = movement.createdAt,
+                    )
+                } else if (reversalQuantity.amount > 0.0) {
+                    item.copy(quantity = (item.quantity + reversalQuantity).normalize())
                 } else {
                     val quantityToRemove = reversalQuantity.negate()
                     if (item.quantity.amount + EPSILON < quantityToRemove.amount) {
@@ -105,22 +124,18 @@ class RestoreLinkedDiaryEntryStashUseCase(
                         )
                     }
 
-                    val remainingQuantity = item.quantity - quantityToRemove
-                    item.copy(
-                        quantity =
-                            if (remainingQuantity.amount <= EPSILON) {
-                                item.quantity.copy(amount = 0.0)
-                            } else {
-                                remainingQuantity
-                            },
-                    )
+                    item.copy(quantity = (item.quantity - quantityToRemove).normalize())
                 }
 
-            stashRepository.updateItem(updatedItem)
+            if (targetItem.quantity.amount <= EPSILON && targetItem.canDeleteWhenEmpty()) {
+                stashRepository.deleteItem(targetItem.id)
+            } else {
+                stashRepository.updateItem(targetItem)
+            }
             stashRepository.insertMovement(
                 StashMovement.new(
-                    stashId = updatedItem.stashId,
-                    itemId = updatedItem.id,
+                    stashId = targetItem.stashId,
+                    itemId = targetItem.id,
                     operation = reversalOperation,
                     quantityChange = reversalQuantity,
                     linkedDiaryEntryId = linkedDiaryEntryId,
@@ -133,6 +148,7 @@ class RestoreLinkedDiaryEntryStashUseCase(
     }
 
     private suspend fun applyEditRebalance(
+        entry: FoodDiaryEntry,
         linkedDiaryEntryId: LinkedDiaryEntryId,
         updatedWeightRatio: Double,
     ): Result<Unit, RestoreLinkedDiaryEntryStashError> {
@@ -147,27 +163,33 @@ class RestoreLinkedDiaryEntryStashUseCase(
         linkedMovementsByItem.forEach { itemMovements ->
             val currentNetQuantity = itemMovements.netQuantityChange()
             val desiredNetQuantity = currentNetQuantity.scale(updatedWeightRatio)
-            val adjustmentQuantity = desiredNetQuantity - currentNetQuantity
+            val adjustmentQuantity = (desiredNetQuantity - currentNetQuantity).normalize()
 
             if (abs(adjustmentQuantity.amount) <= EPSILON) {
                 return@forEach
             }
 
             val itemId = itemMovements.first().itemId
-            val item = stashRepository.getItem(itemId)
-            if (item == null) {
-                return logger.logAndReturnFailure(
-                    tag = TAG,
-                    error = RestoreLinkedDiaryEntryStashError.LinkedItemNotFound(itemId),
-                    message = { "Cannot rebalance linked stash movements for item $itemId; item not found." },
-                )
-            }
+            val stashId = itemMovements.first().stashId
+            val currentItem = stashRepository.getItem(itemId)
 
-            val updatedItem =
+            val targetItem =
                 if (adjustmentQuantity.amount > 0.0) {
-                    item.copy(quantity = item.quantity + adjustmentQuantity)
+                    currentItem?.copy(quantity = (currentItem.quantity + adjustmentQuantity).normalize())
+                        ?: createLinkedItem(
+                            entry = entry,
+                            itemId = itemId,
+                            stashId = stashId,
+                            quantity = adjustmentQuantity,
+                            createdAt = itemMovements.first().createdAt,
+                        )
                 } else {
                     val quantityToRemove = adjustmentQuantity.negate()
+                    val item = currentItem ?: return logger.logAndReturnFailure(
+                        tag = TAG,
+                        error = RestoreLinkedDiaryEntryStashError.LinkedItemNotFound(itemId),
+                        message = { "Cannot rebalance linked stash movements for item $itemId; item not found." },
+                    )
                     if (item.quantity.amount + EPSILON < quantityToRemove.amount) {
                         return logger.logAndReturnFailure(
                             tag = TAG,
@@ -183,22 +205,18 @@ class RestoreLinkedDiaryEntryStashUseCase(
                         )
                     }
 
-                    val remainingQuantity = item.quantity - quantityToRemove
-                    item.copy(
-                        quantity =
-                            if (remainingQuantity.amount <= EPSILON) {
-                                item.quantity.copy(amount = 0.0)
-                            } else {
-                                remainingQuantity
-                            },
-                    )
+                    item.copy(quantity = (item.quantity - quantityToRemove).normalize())
                 }
 
-            stashRepository.updateItem(updatedItem)
+            if (targetItem.quantity.amount <= EPSILON && targetItem.canDeleteWhenEmpty()) {
+                stashRepository.deleteItem(targetItem.id)
+            } else {
+                stashRepository.updateItem(targetItem)
+            }
             stashRepository.insertMovement(
                 StashMovement.new(
-                    stashId = updatedItem.stashId,
-                    itemId = updatedItem.id,
+                    stashId = stashId,
+                    itemId = targetItem.id,
                     operation = StashMovementOperation.AutoReversalOnEdit,
                     quantityChange = adjustmentQuantity,
                     linkedDiaryEntryId = linkedDiaryEntryId,
@@ -216,6 +234,61 @@ class RestoreLinkedDiaryEntryStashUseCase(
     }
 
     private fun StashQuantity.scale(factor: Double): StashQuantity = copy(amount = amount * factor)
+
+    private fun StashQuantity.normalize(): StashQuantity =
+        if (abs(amount) <= EPSILON) {
+            copy(amount = 0.0)
+        } else {
+            this
+        }
+
+    private fun createLinkedItem(
+        entry: FoodDiaryEntry,
+        itemId: StashItemId,
+        stashId: StashDefinitionId,
+        quantity: StashQuantity,
+        createdAt: kotlinx.datetime.LocalDateTime,
+    ): StashItem =
+        StashItem(
+            id = itemId,
+            stashId = stashId,
+            snapshot = entry.food.toReturnedSnapshot(quantity),
+            quantity = quantity.normalize(),
+            createdAt = createdAt,
+        )
+
+    private fun DiaryFood.toReturnedSnapshot(quantity: StashQuantity): StashSnapshot =
+        when (this) {
+            is DiaryFoodProduct ->
+                RawProductSnapshot(
+                    productId = null,
+                    name = name,
+                    brand = null,
+                    barcode = null,
+                    note = note,
+                    isLiquid = isLiquid,
+                    packageWeight = quantity.amount,
+                    servingWeight = servingWeight?.coerceAtMost(quantity.amount),
+                    source = source,
+                    nutritionFacts = nutritionFacts,
+                )
+
+            is DiaryFoodRecipe ->
+                AnonymousDishSnapshot(
+                    name = name,
+                    nutritionFacts = nutritionFacts,
+                    note = note,
+                    isLiquid = isLiquid,
+                    totalWeight = quantity.amount,
+                    totalAmount = quantity,
+                )
+        }
+
+    private fun StashItem.canDeleteWhenEmpty(): Boolean =
+        when (val snapshot = snapshot) {
+            is RawProductSnapshot -> snapshot.productId == null
+            is AnonymousDishSnapshot -> true
+        }
 
     private companion object {
         const val TAG = "RestoreLinkedDiaryEntryStashUseCase"

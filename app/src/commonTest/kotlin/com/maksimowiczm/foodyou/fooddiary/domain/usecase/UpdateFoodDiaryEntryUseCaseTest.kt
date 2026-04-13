@@ -125,6 +125,48 @@ class UpdateFoodDiaryEntryUseCaseTest {
     }
 
     @Test
+    fun when_consumed_item_was_deleted_after_reaching_zero_then_editing_down_recreates_it() = runBlocking {
+        val product = sampleProduct()
+        val entry = sampleFoodDiaryEntry(product = product, measurement = Measurement.Gram(200.0))
+        val stashRepository =
+            FakeStashRepository(
+                initialStashes = listOf(com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash()),
+                initialMovements =
+                    listOf(
+                        StashMovement(
+                            id = StashMovementId(1),
+                            stashId = com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash().id,
+                            itemId = com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem().id,
+                            operation = StashMovementOperation.DirectConsume,
+                            quantityChange = StashQuantity.grams(-200.0),
+                            linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
+                            createdAt = FIXED_NOW,
+                        )
+                    ),
+            )
+        val entryRepository = FakeFoodDiaryEntryRepository(initialEntries = listOf(entry))
+        val useCase = createUseCase(stashRepository = stashRepository, entryRepository = entryRepository)
+
+        val result =
+            useCase.update(
+                id = entry.id,
+                measurement = Measurement.Gram(150.0),
+                mealId = sampleMeal().id,
+                date = FIXED_NOW.date,
+            )
+
+        assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(result)
+        assertEquals(listOf(StashQuantity.grams(50.0)), stashRepository.allItems().map { it.quantity })
+        assertEquals(
+            listOf(
+                StashQuantity.grams(-200.0),
+                StashQuantity.grams(50.0),
+            ),
+            stashRepository.allMovements().map { it.quantityChange },
+        )
+    }
+
+    @Test
     fun when_entry_is_repeatedly_edited_down_then_only_incremental_quantity_is_restored() = runBlocking {
         val product = sampleProduct()
         val item = sampleRawProductItem(quantity = StashQuantity.grams(0.0), product = product)

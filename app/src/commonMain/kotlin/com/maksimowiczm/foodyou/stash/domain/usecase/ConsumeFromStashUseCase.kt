@@ -35,7 +35,10 @@ sealed interface ConsumeFromStashError {
 
     data object InvalidAmount : ConsumeFromStashError
 
-    data object InsufficientQuantity : ConsumeFromStashError
+    data class InsufficientQuantity(
+        val available: StashQuantity,
+        val requested: StashQuantity,
+    ) : ConsumeFromStashError
 
     data object MissingSnapshotWeight : ConsumeFromStashError
 }
@@ -91,7 +94,11 @@ class ConsumeFromStashUseCase(
             if (item.quantity.amount + EPSILON < plan.quantityChange.amount) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
-                    error = ConsumeFromStashError.InsufficientQuantity,
+                    error =
+                        ConsumeFromStashError.InsufficientQuantity(
+                            available = item.quantity,
+                            requested = plan.quantityChange,
+                        ),
                     message = {
                         "Cannot consume ${plan.quantityChange.amount} from stash item ${item.id}; only ${item.quantity.amount} remains."
                     },
@@ -117,17 +124,12 @@ class ConsumeFromStashUseCase(
                     createdAt = now,
             )
 
-            val remainingQuantity = item.quantity - plan.quantityChange
-            stashRepository.updateItem(
-                item.copy(
-                    quantity =
-                        if (remainingQuantity.amount <= EPSILON) {
-                            item.quantity.copy(amount = 0.0)
-                        } else {
-                            remainingQuantity
-                        },
-                )
-            )
+            val remainingQuantity = (item.quantity - plan.quantityChange).normalize()
+            if (remainingQuantity.amount <= EPSILON && item.canDeleteWhenEmpty()) {
+                stashRepository.deleteItem(item.id)
+            } else {
+                stashRepository.updateItem(item.copy(quantity = remainingQuantity))
+            }
 
             stashRepository.insertMovement(
                 StashMovement.new(
@@ -238,11 +240,24 @@ class ConsumeFromStashUseCase(
             }
         }
 
+    private fun StashItem.canDeleteWhenEmpty(): Boolean =
+        when (val snapshot = snapshot) {
+            is RawProductSnapshot -> snapshot.productId == null
+            is AnonymousDishSnapshot -> true
+        }
+
     private data class ConsumptionPlan(
         val quantityChange: StashQuantity,
         val measurement: Measurement,
         val requiresSnapshotWeight: Boolean = false,
     )
+
+    private fun StashQuantity.normalize(): StashQuantity =
+        if (amount <= EPSILON) {
+            copy(amount = 0.0)
+        } else {
+            this
+        }
 
     private companion object {
         const val TAG = "ConsumeFromStashUseCase"

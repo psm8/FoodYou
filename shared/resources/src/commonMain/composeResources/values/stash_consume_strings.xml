@@ -3,5 +3,6 @@
     <string name="message_consume_item_no_meals">Create at least one meal before consuming stash items.</string>
     <string name="message_consume_item_invalid_amount">Enter a valid amount to consume.</string>
     <string name="message_consume_item_too_much">The selected amount is larger than what remains in the stash.</string>
+    <string name="message_consume_item_insufficient_quantity_detail">Only %1$s left; you tried to consume %2$s.</string>
     <string name="message_consume_item_failed">Could not consume this stash item right now.</string>
 </resources>

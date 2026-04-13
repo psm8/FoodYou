@@ -1,7 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.stash.consume
 
+import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import kotlinx.datetime.LocalDate
 
 internal data class ConsumeStashItemMeal(
@@ -9,12 +9,19 @@ internal data class ConsumeStashItemMeal(
     val name: String,
 )
 
-internal enum class ConsumeStashItemError {
-    ItemNotFound,
-    MealNotFound,
-    InvalidAmount,
-    InsufficientQuantity,
-    Unknown,
+internal sealed interface ConsumeStashItemError {
+    data object ItemNotFound : ConsumeStashItemError
+
+    data object MealNotFound : ConsumeStashItemError
+
+    data object InvalidAmount : ConsumeStashItemError
+
+    data class InsufficientQuantity(
+        val available: StashQuantity,
+        val requested: StashQuantity,
+    ) : ConsumeStashItemError
+
+    data object Unknown : ConsumeStashItemError
 }
 
 internal data class ConsumeStashItemState(
@@ -30,25 +37,15 @@ internal data class ConsumeStashItemState(
     val error: ConsumeStashItemError? = null,
 ) {
     val parsedAmount: StashQuantity?
-        get() = remainingQuantity?.unit?.toQuantityOrNull(amount)
+        get() = remainingQuantity?.unit?.let { amount.toStashQuantityOrNull(it) }
 
     val canSave: Boolean
         get() {
-            val remainingQuantity = remainingQuantity ?: return false
+            remainingQuantity ?: return false
             val parsedAmount = parsedAmount ?: return false
             return !isLoading &&
                 !isSaving &&
                 selectedMealId != null &&
-                parsedAmount.amount > 0.0 &&
-                parsedAmount.amount <= remainingQuantity.amount
+                parsedAmount.amount > 0.0
         }
-}
-
-internal fun StashQuantityUnit.toQuantityOrNull(amountText: String): StashQuantity? {
-    val amount = amountText.toDoubleOrNull() ?: return null
-    return when (this) {
-        StashQuantityUnit.Gram -> StashQuantity.grams(amount)
-        StashQuantityUnit.Milliliter -> StashQuantity.milliliters(amount)
-        StashQuantityUnit.Fraction -> StashQuantity.fraction(amount)
-    }
 }

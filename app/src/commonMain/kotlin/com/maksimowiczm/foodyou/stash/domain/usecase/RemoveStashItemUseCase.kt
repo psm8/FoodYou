@@ -43,7 +43,7 @@ class RemoveStashItemUseCase(
             }
 
             val updatedItem = item.copy(quantity = StashQuantity(0.0, item.quantity.unit))
-            stashRepository.updateItem(updatedItem)
+            stashRepository.deleteItem(item.id)
             if (item.quantity.amount > 0.0) {
                 stashRepository.insertMovement(
                     StashMovement.new(

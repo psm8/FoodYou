@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.stash.infrastructure.room
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,9 @@ abstract class StashItemDao {
     @Insert abstract suspend fun insertStashItem(entity: StashItemEntity): Long
 
     @Update abstract suspend fun updateStashItem(entity: StashItemEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertStashItem(entity: StashItemEntity)
 
     @Delete abstract suspend fun deleteStashItem(entity: StashItemEntity)
 
