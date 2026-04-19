@@ -21,8 +21,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun StashAddSearchScreen(
     onBack: () -> Unit,
-    onProductSelected: (FoodId.Product, Measurement) -> Unit,
-    onRecipeSelected: (FoodId.Recipe) -> Unit,
+    onFoodSelected: (StashAddDestination) -> Unit,
     onUpdateUsdaApiKey: () -> Unit,
     onUpdateOpenFoodFactsCredentials: () -> Unit,
     modifier: Modifier = Modifier,
@@ -41,8 +40,7 @@ internal fun StashAddSearchScreen(
     ) { paddingValues ->
         SearchContent(
             paddingValues = paddingValues,
-            onProductSelected = onProductSelected,
-            onRecipeSelected = onRecipeSelected,
+            onFoodSelected = onFoodSelected,
             onUpdateUsdaApiKey = onUpdateUsdaApiKey,
             onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -53,21 +51,41 @@ internal fun StashAddSearchScreen(
 @Composable
 private fun SearchContent(
     paddingValues: PaddingValues,
-    onProductSelected: (FoodId.Product, Measurement) -> Unit,
-    onRecipeSelected: (FoodId.Recipe) -> Unit,
+    onFoodSelected: (StashAddDestination) -> Unit,
     onUpdateUsdaApiKey: () -> Unit,
     onUpdateOpenFoodFactsCredentials: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FoodSearchApp(
         onFoodClick = { food, measurement ->
-            when (val id = food.id) {
-                is FoodId.Product -> onProductSelected(id, measurement)
-                is FoodId.Recipe -> onRecipeSelected(id)
-            }
+            onFoodSelected(
+                StashAddDestination.from(
+                    foodId = food.id,
+                    measurement = measurement,
+                )
+            )
         },
         onUpdateUsdaApiKey = onUpdateUsdaApiKey,
         onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
         modifier = modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
     )
+}
+
+internal sealed interface StashAddDestination {
+    data class Product(
+        val productId: FoodId.Product,
+        val measurement: Measurement,
+    ) : StashAddDestination
+
+    data class RecipeSnapshot(
+        val recipeId: FoodId.Recipe,
+    ) : StashAddDestination
+
+    companion object {
+        fun from(foodId: FoodId, measurement: Measurement): StashAddDestination =
+            when (foodId) {
+                is FoodId.Product -> Product(productId = foodId, measurement = measurement)
+                is FoodId.Recipe -> RecipeSnapshot(recipeId = foodId)
+            }
+    }
 }

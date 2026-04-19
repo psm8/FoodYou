@@ -37,6 +37,7 @@ import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizeNutritionFacts
 import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
 import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddProductScreen
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddDestination
 import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddSearchScreen
 import com.maksimowiczm.foodyou.app.ui.stash.browser.StashBrowserScreen
 import com.maksimowiczm.foodyou.app.ui.stash.consume.ConsumeStashItemScreen
@@ -440,19 +441,25 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 
             StashAddSearchScreen(
                 onBack = { navController.popBackStackInclusive<StashAddSearch>() },
-                onProductSelected = { productId, measurement ->
-                    navController.navigateSingleTop(
-                        StashAddProduct(
-                            productId = productId.id,
-                            stashId = stashId,
-                            measurement = measurement,
-                        )
-                    )
-                },
-                onRecipeSelected = { recipeId ->
-                    navController.navigateSingleTop(
-                        StashAddRecipeSnapshot(recipeId = recipeId.id, stashId = stashId)
-                    )
+                onFoodSelected = { destination ->
+                    when (destination) {
+                        is StashAddDestination.Product ->
+                            navController.navigateSingleTop(
+                                StashAddProduct(
+                                    productId = destination.productId.id,
+                                    stashId = stashId,
+                                    measurement = destination.measurement,
+                                )
+                            )
+
+                        is StashAddDestination.RecipeSnapshot ->
+                            navController.navigateSingleTop(
+                                StashAddRecipeSnapshot(
+                                    recipeId = destination.recipeId.id,
+                                    stashId = stashId,
+                                )
+                            )
+                    }
                 },
                 onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
                 onUpdateOpenFoodFactsCredentials = {
