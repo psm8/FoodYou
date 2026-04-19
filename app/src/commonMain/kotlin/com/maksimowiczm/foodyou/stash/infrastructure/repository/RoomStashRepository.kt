@@ -163,6 +163,12 @@ private fun StashItemEntity.toModel(): StashItem =
             },
         quantity = StashQuantity(amount = quantity, unit = baseUnit),
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
+        rawMeasurement =
+            if (rawMeasurementType != null && rawMeasurementValue != null) {
+                Measurement.from(type = rawMeasurementType, rawValue = rawMeasurementValue)
+            } else {
+                null
+            },
     )
 
 private fun StashItem.toEntity(): StashItemEntity {
@@ -177,6 +183,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                 quantity = quantity.amount,
                 baseUnit = quantity.unit,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
+                rawMeasurementType = rawMeasurement?.type,
+                rawMeasurementValue = rawMeasurement?.rawValue,
                 snapshotProductId = snapshot.productId?.id,
                 snapshotName = snapshot.name,
                 snapshotNote = snapshot.note,
@@ -202,6 +210,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                 quantity = quantity.amount,
                 baseUnit = quantity.unit,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
+                rawMeasurementType = rawMeasurement?.type,
+                rawMeasurementValue = rawMeasurement?.rawValue,
                 snapshotProductId = null,
                 snapshotName = snapshot.name,
                 snapshotNote = snapshot.note,

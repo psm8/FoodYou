@@ -45,6 +45,10 @@ class StashDiaryConsistencyIntegrationTest {
             assertEquals(1, stashRepository.allItems().size)
             assertEquals(StashQuantity.grams(200.0), stashRepository.allItems().single().quantity)
             assertEquals(
+                Measurement.Serving(1.0),
+                stashRepository.allItems().single().rawMeasurement,
+            )
+            assertEquals(
                 listOf(Measurement.Gram(100.0), Measurement.Serving(1.0)),
                 stashRepository.allMovements().map { it.rawMeasurement },
             )

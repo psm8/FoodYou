@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsC
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashCoreMigration
+import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashItemMeasurementMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashMovementMeasurementMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashMovementNoteMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.deleteUsedFoodEvent
@@ -157,7 +158,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 35
+        const val VERSION = 36
 
         private val migrations: List<Migration> =
             listOf(
@@ -178,6 +179,7 @@ abstract class FoodYouDatabase :
                 StashCoreMigration,
                 StashMovementNoteMigration,
                 StashMovementMeasurementMigration,
+                StashItemMeasurementMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
