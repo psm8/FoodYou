@@ -62,6 +62,7 @@ class ConfirmShoppingSessionUseCase(
                                 StashItem.new(
                                     stashId = stash.id,
                                     snapshot = item.snapshot,
+                                    measurement = item.measurement,
                                     quantity = item.quantity,
                                     createdAt = now,
                                 )

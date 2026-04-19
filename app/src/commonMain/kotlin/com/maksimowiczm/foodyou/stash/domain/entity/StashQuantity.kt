@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.stash.domain.entity
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+
 enum class StashQuantityUnit {
     Gram,
     Milliliter,
@@ -39,3 +41,10 @@ data class StashQuantity(val amount: Double, val unit: StashQuantityUnit) {
             StashQuantity(amount, StashQuantityUnit.Fraction)
     }
 }
+
+fun StashQuantity.toMeasurement(): Measurement =
+    when (unit) {
+        StashQuantityUnit.Gram -> Measurement.Gram(amount)
+        StashQuantityUnit.Milliliter -> Measurement.Milliliter(amount)
+        StashQuantityUnit.Fraction -> Measurement.Serving(amount)
+    }

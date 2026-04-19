@@ -20,10 +20,11 @@ class ShoppingSessionStateTest {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
-                stashOptions = listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
+                stashOptions =
+                    listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
                 selectedStashId = StashDefinitionId(1L),
                 selectedProduct = selectedProduct(),
-                pendingQuantity = "250",
+                pendingMeasurement = Measurement.Gram(250.0),
             )
 
         assertTrue(state.canAddPendingProduct)
@@ -34,7 +35,8 @@ class ShoppingSessionStateTest {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
-                stashOptions = listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
+                stashOptions =
+                    listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
                 selectedStashId = StashDefinitionId(1L),
                 items =
                     listOf(
@@ -52,10 +54,11 @@ class ShoppingSessionStateTest {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
-                stashOptions = listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
+                stashOptions =
+                    listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
                 selectedStashId = StashDefinitionId(1L),
                 selectedProduct = selectedProduct(),
-                pendingQuantity = "lots",
+                pendingMeasurement = null,
             )
 
         assertFalse(state.canAddPendingProduct)
@@ -66,12 +69,38 @@ class ShoppingSessionStateTest {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
-                stashOptions = listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
+                stashOptions =
+                    listOf(ShoppingSessionStashOption(id = StashDefinitionId(1L), name = "Pantry")),
                 selectedStashId = StashDefinitionId(1L),
-                items = listOf(previewItem(id = "1", energy = 60.0, quantity = 200.0).updateQuantity("oops")),
+                items =
+                    listOf(
+                        previewItem(id = "1", energy = 60.0, quantity = 200.0)
+                            .updateQuantity("oops")
+                    ),
             )
 
         assertFalse(state.canConfirm)
+    }
+
+    @Test
+    fun `when editing package quantity, the original measurement type is preserved`() {
+        val updated =
+            ShoppingSessionListItem.from(
+                    id = ShoppingSessionListItemId("1"),
+                    sessionItem =
+                        ShoppingSessionItem(
+                            id = ShoppingSessionItemId("session-item-1"),
+                            productId = sampleProduct().id,
+                            snapshot =
+                                RawProductSnapshot.from(sampleProduct(packageWeight = 1000.0)),
+                            measurement = Measurement.Package(1.5),
+                            quantity = StashQuantity.grams(1500.0),
+                        ),
+                )
+                .updateQuantity("750")
+
+        assertEquals(Measurement.Package(0.75), updated.measurement)
+        assertEquals(StashQuantity.grams(750.0), updated.sessionItem.quantity)
     }
 
     private fun selectedProduct(): ShoppingSessionSelectedProduct =
@@ -87,18 +116,18 @@ class ShoppingSessionStateTest {
             )
         )
 
-    private fun previewItem(
-        id: String,
-        energy: Double,
-        quantity: Double,
-    ): ShoppingSessionListItem =
+    private fun previewItem(id: String, energy: Double, quantity: Double): ShoppingSessionListItem =
         ShoppingSessionListItem.from(
             id = ShoppingSessionListItemId(id),
             sessionItem =
                 ShoppingSessionItem(
                     id = ShoppingSessionItemId("session-item-$id"),
                     productId = sampleProduct().id,
-                    snapshot = RawProductSnapshot.from(sampleProduct(nutritionFacts = nutritionWithEnergy(energy))),
+                    snapshot =
+                        RawProductSnapshot.from(
+                            sampleProduct(nutritionFacts = nutritionWithEnergy(energy))
+                        ),
+                    measurement = Measurement.Gram(quantity),
                     quantity = StashQuantity.grams(quantity),
                 ),
         )

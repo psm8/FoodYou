@@ -2,6 +2,10 @@ package com.maksimowiczm.foodyou.stash.infrastructure.repository
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.infrastructure.room.toDomain
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntityNutrients
@@ -156,6 +160,12 @@ private fun StashItemEntity.toModel(): StashItem =
                             ),
                     )
             },
+        measurement =
+            if (measurementType != null && measurementRawValue != null) {
+                Measurement.from(measurementType, measurementRawValue)
+            } else {
+                null
+            },
         quantity = StashQuantity(amount = quantity, unit = baseUnit),
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
     )
@@ -172,6 +182,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                     quantity = quantity.amount,
                     baseUnit = quantity.unit,
                     createdAtEpochSeconds = createdAt.toEpochSeconds(),
+                    measurementType = measurement?.type,
+                    measurementRawValue = measurement?.rawValue,
                     snapshotProductId = snapshot.productId?.id,
                     snapshotName = snapshot.name,
                     snapshotNote = snapshot.note,
@@ -197,6 +209,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                     quantity = quantity.amount,
                     baseUnit = quantity.unit,
                     createdAtEpochSeconds = createdAt.toEpochSeconds(),
+                    measurementType = measurement?.type,
+                    measurementRawValue = measurement?.rawValue,
                     snapshotProductId = null,
                     snapshotName = snapshot.name,
                     snapshotNote = snapshot.note,
