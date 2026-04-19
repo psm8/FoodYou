@@ -30,6 +30,7 @@ internal class HomeStashQuickAddViewModel(
 ) : ViewModel() {
     private val scope = coroutineScope ?: viewModelScope
     private val ownerId = stashOwnerProvider.current()
+    private val isSaving = MutableStateFlow(false)
     private val selectedStashId = MutableStateFlow(preferredStashId)
     private val error = MutableStateFlow<HomeStashQuickAddError?>(null)
     private val eventBus = Channel<HomeStashQuickAddEvent>()
@@ -44,7 +45,7 @@ internal class HomeStashQuickAddViewModel(
     val events = eventBus.receiveAsFlow()
 
     val state =
-        combine(stashes, selectedStashId, error) { stashes, selectedStashId, error ->
+        combine(stashes, isSaving, selectedStashId, error) { stashes, isSaving, selectedStashId, error ->
                 val resolvedSelectedStashId =
                     when {
                         selectedStashId != null && stashes.any { it.id == selectedStashId } ->
@@ -54,7 +55,7 @@ internal class HomeStashQuickAddViewModel(
                     }
 
                 HomeStashQuickAddState(
-                    isLoading = false,
+                    isLoading = isSaving,
                     stashes = stashes,
                     selectedStashId = resolvedSelectedStashId,
                     error = error,
@@ -75,29 +76,37 @@ internal class HomeStashQuickAddViewModel(
 
     fun save(name: String, nutritionFacts: NutritionFacts, measurement: Measurement) {
         val currentState = state.value
+        if (isSaving.value) {
+            return
+        }
         if (currentState.requiresStashSelection && currentState.selectedStashId == null) {
             error.value = HomeStashQuickAddError.StashSelectionRequired
             return
         }
 
+        isSaving.value = true
         scope.launch {
-            val result =
-                createManualStashSnapshotUseCase.create(
-                    name = name,
-                    nutritionFacts = nutritionFacts,
-                    measurement = measurement,
-                    stashId = currentState.selectedStashId,
-                )
+            try {
+                val result =
+                    createManualStashSnapshotUseCase.create(
+                        name = name,
+                        nutritionFacts = nutritionFacts,
+                        measurement = measurement,
+                        stashId = currentState.selectedStashId,
+                    )
 
-            when (result) {
-                is Result.Success -> {
-                    error.value = null
-                    eventBus.send(HomeStashQuickAddEvent.Saved(result.data.stashId))
-                }
+                when (result) {
+                    is Result.Success -> {
+                        error.value = null
+                        eventBus.send(HomeStashQuickAddEvent.Saved(result.data.stashId))
+                    }
 
-                is Result.Error -> {
-                    error.value = result.error.toUiError()
+                    is Result.Error -> {
+                        error.value = result.error.toUiError()
+                    }
                 }
+            } finally {
+                isSaving.value = false
             }
         }
     }

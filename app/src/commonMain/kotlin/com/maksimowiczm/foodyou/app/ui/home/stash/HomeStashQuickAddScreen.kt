@@ -34,10 +34,10 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import foodyou.app.generated.resources.Res
-import foodyou.app.generated.resources.action_quick_add
 import foodyou.app.generated.resources.action_save
 import foodyou.app.generated.resources.description_home_stash_quick_add
 import foodyou.app.generated.resources.headline_quick_add
+import foodyou.app.generated.resources.label_home_stash_select
 import foodyou.app.generated.resources.message_home_stash_default_target
 import foodyou.app.generated.resources.message_home_stash_invalid_measurement
 import foodyou.app.generated.resources.message_home_stash_quick_add_failed
@@ -170,7 +170,7 @@ internal fun HomeStashQuickAddScreen(
                     if (state.requiresStashSelection) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = stringResource(Res.string.action_quick_add),
+                                text = stringResource(Res.string.label_home_stash_select),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                             )
