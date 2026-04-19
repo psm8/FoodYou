@@ -1,12 +1,16 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
+import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UpdateFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
@@ -14,12 +18,64 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 
 class StashDiaryConsistencyIntegrationTest {
+    @Test
+    fun when_manual_quick_add_snapshot_is_created_then_catalog_and_diary_stay_unchanged_until_consumed() =
+        runBlocking {
+            val stash = sampleStash()
+            val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
+            val productRepository = FakeProductRepository()
+            val diaryRepository = FakeFoodDiaryEntryRepository()
+            val transactionProvider =
+                SnapshottingFakeTransactionProvider(stashRepository, diaryRepository)
+            val useCase =
+                CreateManualStashSnapshotUseCase(
+                    stashRepository = stashRepository,
+                    stashOwnerProvider = localOwnerProvider(),
+                    transactionProvider = transactionProvider,
+                    dateProvider = FixedDateProvider(),
+                    logger = NoOpLogger,
+                )
+
+            val result =
+                useCase.create(
+                    name = "Quick shake",
+                    nutritionFacts =
+                        NutritionFacts(
+                            energy = 240.0.toNutrientValue(),
+                            proteins = 30.0.toNutrientValue(),
+                            carbohydrates = 12.0.toNutrientValue(),
+                            fats = 6.0.toNutrientValue(),
+                        ),
+                    measurement = Measurement.Milliliter(300.0),
+                    stashId = stash.id,
+                )
+
+            assertIs<Success<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>>(result)
+            assertEquals(emptyList(), productRepository.observeProducts(limit = 10, offset = 0).first())
+            assertEquals(emptyList(), diaryRepository.allEntries())
+
+            val item = stashRepository.allItems().single()
+            val snapshot = assertIs<RawProductSnapshot>(item.snapshot)
+            val movement = stashRepository.allMovements().single()
+
+            assertEquals(null, snapshot.productId)
+            assertEquals("Quick shake", snapshot.name)
+            assertEquals(80.0, snapshot.nutritionFacts.energy.value)
+            assertEquals(10.0, snapshot.nutritionFacts.proteins.value)
+            assertEquals(4.0, snapshot.nutritionFacts.carbohydrates.value)
+            assertEquals(2.0, snapshot.nutritionFacts.fats.value)
+            assertEquals(StashQuantity.milliliters(300.0), item.quantity)
+            assertEquals(StashMovementOperation.ManualQuickAdd, movement.operation)
+            assertEquals(Measurement.Milliliter(300.0), movement.rawMeasurement)
+        }
+
     @Test
     fun when_same_product_is_added_twice_with_equivalent_measurements_then_item_quantity_is_merged_and_movements_stay_separate() =
         runBlocking {

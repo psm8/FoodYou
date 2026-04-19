@@ -3,18 +3,14 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
+import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
-import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashError
-import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.CreateManualStashSnapshotError
+import com.maksimowiczm.foodyou.stash.domain.usecase.CreateManualStashSnapshotUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,22 +22,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 internal class HomeStashQuickAddViewModel(
-    private val productId: FoodId.Product,
     preferredStashId: StashDefinitionId?,
-    productRepository: ProductRepository,
     stashRepository: StashRepository,
     stashOwnerProvider: StashOwnerProvider,
-    private val addProductToStashUseCase: AddProductToStashUseCase,
+    private val createManualStashSnapshotUseCase: CreateManualStashSnapshotUseCase,
     coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
     private val scope = coroutineScope ?: viewModelScope
     private val ownerId = stashOwnerProvider.current()
-    private val amount = MutableStateFlow("")
     private val selectedStashId = MutableStateFlow(preferredStashId)
     private val error = MutableStateFlow<HomeStashQuickAddError?>(null)
     private val eventBus = Channel<HomeStashQuickAddEvent>()
 
-    private val product = productRepository.observeProduct(productId)
     private val stashes =
         stashRepository.observeStashes(ownerId).map { list ->
             list.sortedWith(compareBy({ it.ordering }, { it.id.value })).map {
@@ -52,12 +44,7 @@ internal class HomeStashQuickAddViewModel(
     val events = eventBus.receiveAsFlow()
 
     val state =
-        combine(product, stashes, amount, selectedStashId, error) {
-                product,
-                stashes,
-                amount,
-                selectedStashId,
-                error ->
+        combine(stashes, selectedStashId, error) { stashes, selectedStashId, error ->
                 val resolvedSelectedStashId =
                     when {
                         selectedStashId != null && stashes.any { it.id == selectedStashId } ->
@@ -67,34 +54,17 @@ internal class HomeStashQuickAddViewModel(
                     }
 
                 HomeStashQuickAddState(
-                    productId = productId,
-                    productName = product?.headline.orEmpty(),
                     isLoading = false,
-                    isProductMissing = product == null,
-                    amount = amount,
-                    unit =
-                        if (product?.isLiquid == true) StashQuantityUnit.Milliliter
-                        else StashQuantityUnit.Gram,
                     stashes = stashes,
                     selectedStashId = resolvedSelectedStashId,
-                    error = if (product == null) HomeStashQuickAddError.ProductNotFound else error,
+                    error = error,
                 )
             }
             .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
-                initialValue = HomeStashQuickAddState(productId = productId),
+                initialValue = HomeStashQuickAddState(),
             )
-
-    fun updateAmount(value: String) {
-        amount.value = value
-        if (
-            error.value == HomeStashQuickAddError.InvalidAmount ||
-                error.value == HomeStashQuickAddError.SaveFailed
-        ) {
-            error.value = null
-        }
-    }
 
     fun selectStash(stashId: StashDefinitionId) {
         selectedStashId.value = stashId
@@ -103,21 +73,8 @@ internal class HomeStashQuickAddViewModel(
         }
     }
 
-    fun save() {
+    fun save(name: String, nutritionFacts: NutritionFacts, measurement: Measurement) {
         val currentState = state.value
-        if (currentState.isLoading) {
-            return
-        }
-        if (currentState.isProductMissing) {
-            error.value = HomeStashQuickAddError.ProductNotFound
-            return
-        }
-        val measurement =
-            currentState.parsedMeasurement
-                ?: run {
-                    error.value = HomeStashQuickAddError.InvalidAmount
-                    return
-                }
         if (currentState.requiresStashSelection && currentState.selectedStashId == null) {
             error.value = HomeStashQuickAddError.StashSelectionRequired
             return
@@ -125,8 +82,9 @@ internal class HomeStashQuickAddViewModel(
 
         scope.launch {
             val result =
-                addProductToStashUseCase.add(
-                    productId = productId,
+                createManualStashSnapshotUseCase.create(
+                    name = name,
+                    nutritionFacts = nutritionFacts,
                     measurement = measurement,
                     stashId = currentState.selectedStashId,
                 )
@@ -144,59 +102,32 @@ internal class HomeStashQuickAddViewModel(
         }
     }
 
-    private fun AddProductToStashError.toUiError(): HomeStashQuickAddError =
+    private fun CreateManualStashSnapshotError.toUiError(): HomeStashQuickAddError =
         when (this) {
-            is AddProductToStashError.ProductNotFound -> HomeStashQuickAddError.ProductNotFound
-            is AddProductToStashError.StashNotFound -> HomeStashQuickAddError.SaveFailed
-            AddProductToStashError.StashSelectionRequired ->
+            CreateManualStashSnapshotError.InvalidMeasurement ->
+                HomeStashQuickAddError.InvalidMeasurement
+            CreateManualStashSnapshotError.StashSelectionRequired ->
                 HomeStashQuickAddError.StashSelectionRequired
-            AddProductToStashError.InvalidMeasurement -> HomeStashQuickAddError.InvalidAmount
+            is CreateManualStashSnapshotError.StashNotFound,
+            CreateManualStashSnapshotError.InvalidName -> HomeStashQuickAddError.SaveFailed
         }
 }
 
 @Immutable
 internal data class HomeStashQuickAddState(
-    val productId: FoodId.Product,
-    val productName: String = "",
     val isLoading: Boolean = true,
-    val isProductMissing: Boolean = false,
-    val amount: String = "",
-    val unit: StashQuantityUnit = StashQuantityUnit.Gram,
     val stashes: List<HomeStashQuickAddStash> = emptyList(),
     val selectedStashId: StashDefinitionId? = null,
     val error: HomeStashQuickAddError? = null,
 ) {
     val requiresStashSelection: Boolean
         get() = stashes.size > 1
-
-    val parsedQuantity: StashQuantity?
-        get() = amount.toStashQuantityOrNull(unit)
-
-    val parsedMeasurement: Measurement?
-        get() =
-            when (val quantity = parsedQuantity) {
-                null -> null
-                else ->
-                    when (quantity.unit) {
-                        StashQuantityUnit.Gram -> Measurement.Gram(quantity.amount)
-                        StashQuantityUnit.Milliliter -> Measurement.Milliliter(quantity.amount)
-                        StashQuantityUnit.Fraction -> Measurement.Serving(quantity.amount)
-                    }
-            }
-
-    val canSave: Boolean
-        get() =
-            !isLoading &&
-                !isProductMissing &&
-                parsedMeasurement != null &&
-                (!requiresStashSelection || selectedStashId != null)
 }
 
 @Immutable internal data class HomeStashQuickAddStash(val id: StashDefinitionId, val name: String)
 
 internal enum class HomeStashQuickAddError {
-    ProductNotFound,
-    InvalidAmount,
+    InvalidMeasurement,
     StashSelectionRequired,
     SaveFailed,
 }

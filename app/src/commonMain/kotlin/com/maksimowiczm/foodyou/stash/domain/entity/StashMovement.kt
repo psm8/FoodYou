@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDateTime
 enum class StashMovementOperation {
     Purchase,
     CreateSnapshot,
+    ManualQuickAdd,
     DirectConsume,
     IngredientSubtract,
     ReturnToStash,

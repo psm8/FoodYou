@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
@@ -77,6 +78,7 @@ fun StashManagementScreen(
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
     onAddToStash: (StashDefinitionId) -> Unit,
+    onQuickAddToStash: (StashDefinitionId) -> Unit,
     onStartShoppingSession: (StashDefinitionId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -88,6 +90,7 @@ fun StashManagementScreen(
         onBack = onBack,
         onOpenStash = onOpenStash,
         onAddToStash = onAddToStash,
+        onQuickAddToStash = onQuickAddToStash,
         onStartShoppingSession = onStartShoppingSession,
         onCreateStash = { name ->
             viewModel.updateDraft(name)
@@ -106,6 +109,7 @@ private fun StashManagementScreen(
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
     onAddToStash: (StashDefinitionId) -> Unit,
+    onQuickAddToStash: (StashDefinitionId) -> Unit,
     onStartShoppingSession: (StashDefinitionId) -> Unit,
     onCreateStash: (String) -> Unit,
     onRenameStash: (StashDefinitionId, String) -> Unit,
@@ -280,6 +284,7 @@ private fun StashManagementScreen(
                         isDragging = isDragging,
                         lastModifiedLabel = dateFormatter.formatDateTime(stash.lastModifiedAt),
                         onAddToStash = { onAddToStash(stash.id) },
+                        onQuickAddToStash = { onQuickAddToStash(stash.id) },
                         onOpen = { onOpenStash(stash.id) },
                         onStartShoppingSession = { onStartShoppingSession(stash.id) },
                         onRename = {
@@ -302,6 +307,7 @@ private fun StashManagementRow(
     isDragging: Boolean,
     lastModifiedLabel: String,
     onAddToStash: () -> Unit,
+    onQuickAddToStash: () -> Unit,
     onOpen: () -> Unit,
     onStartShoppingSession: () -> Unit,
     onRename: () -> Unit,
@@ -350,6 +356,12 @@ private fun StashManagementRow(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = stringResource(Res.string.action_add),
+                            )
+                        }
+                        IconButton(onClick = onQuickAddToStash) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = stringResource(Res.string.action_quick_add),
                             )
                         }
                         IconButton(onClick = onStartShoppingSession) {

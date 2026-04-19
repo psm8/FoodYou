@@ -27,6 +27,7 @@ import com.maksimowiczm.foodyou.app.ui.goals.master.GoalsScreen
 import com.maksimowiczm.foodyou.app.ui.goals.setup.DailyGoalsScreen
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardSettings
 import com.maksimowiczm.foodyou.app.ui.home.master.HomeScreen
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationScreen
 import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotScreen
@@ -102,6 +103,9 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onAddToStashClick = { stashId ->
                     navController.navigateSingleTop(StashAddSearch(stashId?.value))
                 },
+                onQuickAddToStashClick = { stashId ->
+                    navController.navigateSingleTop(StashQuickAdd(stashId?.value))
+                },
             )
         }
         forwardBackwardComposable<Settings> {
@@ -125,6 +129,9 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 },
                 onAddToStash = { stashId ->
                     navController.navigateSingleTop(StashAddSearch(stashId.value))
+                },
+                onQuickAddToStash = { stashId ->
+                    navController.navigateSingleTop(StashQuickAdd(stashId.value))
                 },
                 onStartShoppingSession = { stashId ->
                     navController.navigateSingleTop(StashShopping(stashId.value))
@@ -495,6 +502,18 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 },
             )
         }
+        forwardBackwardComposable<StashQuickAdd> {
+            val (stashId) = it.toRoute<StashQuickAdd>()
+
+            HomeStashQuickAddScreen(
+                preferredStashId = stashId,
+                onBack = { navController.popBackStackInclusive<StashQuickAdd>() },
+                onSaved = { targetStashId ->
+                    navController.popBackStackInclusive<StashQuickAdd>()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+            )
+        }
         forwardBackwardComposable<NutritionFactsPersonalization> {
             PersonalizeNutritionFactsScreen(
                 onBack = { navController.popBackStackInclusive<NutritionFactsPersonalization>() }
@@ -649,6 +668,8 @@ private class StashAddProduct(
 }
 
 @Serializable private data class StashAddRecipeSnapshot(val recipeId: Long, val stashId: Long?)
+
+@Serializable private data class StashQuickAdd(val stashId: Long?)
 
 @Serializable private object HomePersonalization
 

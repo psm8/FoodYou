@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -29,6 +31,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
+import foodyou.app.generated.resources.action_quick_add
 import foodyou.app.generated.resources.action_view_stash
 import foodyou.app.generated.resources.description_home_stash_stashes
 import foodyou.app.generated.resources.description_home_stash_total_items
@@ -41,6 +44,7 @@ internal fun HomeStashCard(
     onConsumeItem: (StashItemId) -> Unit,
     onViewStash: (StashDefinitionId?) -> Unit,
     onAddToStash: (StashDefinitionId?) -> Unit,
+    onQuickAddToStash: (StashDefinitionId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeStashCardViewModel = koinViewModel()
@@ -86,11 +90,19 @@ internal fun HomeStashCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                FilledIconButton(onClick = { onAddToStash(state.preferredStashId) }) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = stringResource(Res.string.action_add),
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledIconButton(onClick = { onAddToStash(state.preferredStashId) }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(Res.string.action_add),
+                        )
+                    }
+                    FilledTonalIconButton(onClick = { onQuickAddToStash(state.preferredStashId) }) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = stringResource(Res.string.action_quick_add),
+                        )
+                    }
                 }
             }
 

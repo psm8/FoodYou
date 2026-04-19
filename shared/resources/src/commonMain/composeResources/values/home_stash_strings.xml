@@ -5,8 +5,10 @@
     <string name="headline_add_recipe_snapshot_to_stash">Add recipe snapshot to stash</string>
     <string name="headline_home_stash_select_recipe">Choose recipe</string>
     <string name="headline_home_stash_total_nutrition">Total nutrition</string>
+    <string name="description_home_stash_quick_add">Create a one-off stash snapshot without adding anything to the reusable food catalog.</string>
     <string name="action_add_product_to_stash">Add product</string>
     <string name="action_add_recipe_snapshot_to_stash">Add recipe snapshot</string>
+    <string name="action_quick_add">Quick add</string>
     <string name="description_home_stash_stashes">Stashes: %1$s</string>
     <string name="label_home_stash_add_amount">Amount (%1$s)</string>
     <string name="label_home_stash_amount_unit">Amount unit</string>
@@ -14,11 +16,13 @@
     <string name="label_home_stash_servings_made">Servings made</string>
     <string name="message_home_stash_default_target">A default stash will be created automatically.</string>
     <string name="message_home_stash_invalid_amount">Enter a valid amount to add.</string>
+    <string name="message_home_stash_invalid_measurement">Choose a valid measurement to add.</string>
     <string name="message_home_stash_invalid_servings">Enter a valid servings count.</string>
     <string name="message_home_stash_recipe_required">Select a recipe to create a stash snapshot.</string>
     <string name="message_home_stash_select_stash">Choose a stash before saving.</string>
     <string name="message_home_stash_save_failed">Could not add this product to the stash right now.</string>
     <string name="message_home_stash_save_snapshot_failed">Could not add this recipe snapshot to the stash right now.</string>
+    <string name="message_home_stash_quick_add_failed">Could not create this stash quick add item right now.</string>
     <plurals name="description_home_stash_total_items">
         <item quantity="one">%1$d item ready</item>
         <item quantity="other">%1$d items ready</item>
