@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
@@ -16,8 +17,6 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -29,15 +28,10 @@ sealed interface AddProductToStashError {
 
     data object StashSelectionRequired : AddProductToStashError
 
-    data object NonPositiveQuantity : AddProductToStashError
-
-    data object InvalidQuantityUnit : AddProductToStashError
+    data object InvalidMeasurement : AddProductToStashError
 }
 
-data class AddProductToStashResult(
-    val stashId: StashDefinitionId,
-    val itemId: StashItemId,
-)
+data class AddProductToStashResult(val stashId: StashDefinitionId, val itemId: StashItemId)
 
 class AddProductToStashUseCase(
     private val productRepository: ProductRepository,
@@ -49,17 +43,9 @@ class AddProductToStashUseCase(
 ) {
     suspend fun add(
         productId: FoodId.Product,
-        quantity: StashQuantity,
+        measurement: Measurement,
         stashId: StashDefinitionId? = null,
     ): Result<AddProductToStashResult, AddProductToStashError> {
-        if (quantity.amount <= 0.0) {
-            return logger.logAndReturnFailure(
-                tag = TAG,
-                error = AddProductToStashError.NonPositiveQuantity,
-                message = { "Stash quantity must be greater than 0." },
-            )
-        }
-
         val product = productRepository.observeProduct(productId).first()
         if (product == null) {
             return logger.logAndReturnFailure(
@@ -69,11 +55,12 @@ class AddProductToStashUseCase(
             )
         }
 
-        if (!product.supportsStashQuantity(quantity)) {
+        val canonicalQuantity = product.toStashQuantityOrNull(measurement)
+        if (canonicalQuantity == null) {
             return logger.logAndReturnFailure(
                 tag = TAG,
-                error = AddProductToStashError.InvalidQuantityUnit,
-                message = { "Product ${product.id} does not support stash quantity ${quantity.unit}." },
+                error = AddProductToStashError.InvalidMeasurement,
+                message = { "Product ${product.id} does not support measurement $measurement." },
             )
         }
 
@@ -84,11 +71,12 @@ class AddProductToStashUseCase(
             val targetStash =
                 when {
                     stashId != null ->
-                        stashes.firstOrNull { it.id == stashId } ?: return@withTransaction logger.logAndReturnFailure(
-                            tag = TAG,
-                            error = AddProductToStashError.StashNotFound(stashId),
-                            message = { "Stash with id $stashId not found." },
-                        )
+                        stashes.firstOrNull { it.id == stashId }
+                            ?: return@withTransaction logger.logAndReturnFailure(
+                                tag = TAG,
+                                error = AddProductToStashError.StashNotFound(stashId),
+                                message = { "Stash with id $stashId not found." },
+                            )
 
                     stashes.isEmpty() -> {
                         val defaultStash =
@@ -108,26 +96,42 @@ class AddProductToStashUseCase(
                         return@withTransaction logger.logAndReturnFailure(
                             tag = TAG,
                             error = AddProductToStashError.StashSelectionRequired,
-                            message = { "A stash must be selected when more than one stash exists." },
+                            message = {
+                                "A stash must be selected when more than one stash exists."
+                            },
                         )
                 }
 
-            val item =
-                StashItem.new(
-                    stashId = targetStash.id,
-                    snapshot = RawProductSnapshot.from(product),
-                    quantity = quantity,
-                    createdAt = now,
-                )
-            val itemId = stashRepository.insertItem(item)
+            val existingItem =
+                stashRepository.observeStashContents(targetStash.id).first().firstOrNull {
+                    it.snapshot is RawProductSnapshot && it.snapshot.productId == product.id
+                }
+            val mergeCandidate = existingItem?.takeIf { it.quantity.unit == canonicalQuantity.unit }
+            val itemId =
+                if (mergeCandidate == null) {
+                    stashRepository.insertItem(
+                        StashItem.new(
+                            stashId = targetStash.id,
+                            snapshot = RawProductSnapshot.from(product),
+                            quantity = canonicalQuantity,
+                            createdAt = now,
+                        )
+                    )
+                } else {
+                    stashRepository.updateItem(
+                        mergeCandidate.copy(quantity = mergeCandidate.quantity + canonicalQuantity)
+                    )
+                    mergeCandidate.id
+                }
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.Purchase,
-                    quantityChange = quantity,
+                    quantityChange = canonicalQuantity,
                     linkedDiaryEntryId = null,
                     createdAt = now,
+                    rawMeasurement = measurement,
                 )
             )
 

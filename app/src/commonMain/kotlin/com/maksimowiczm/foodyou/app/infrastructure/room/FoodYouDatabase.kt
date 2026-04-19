@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsC
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashCoreMigration
+import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashMovementMeasurementMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashMovementNoteMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.deleteUsedFoodEvent
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.fixMeasurementSuggestions
@@ -44,6 +45,8 @@ import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.InitializeMealsCal
 import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.ManualDiaryEntryEntity
 import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MealEntity
 import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MeasurementEntity
+import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipDatabase
+import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDatabase
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDefinitionEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashItemEntity
@@ -51,8 +54,6 @@ import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementOperationTypeConverter
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashQuantityUnitConverter
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashSnapshotTypeConverter
-import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipDatabase
-import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntity
 
 @Database(
     entities =
@@ -156,7 +157,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 34
+        const val VERSION = 35
 
         private val migrations: List<Migration> =
             listOf(
@@ -176,6 +177,7 @@ abstract class FoodYouDatabase :
                 FoodSearchFtsCyrillicMigration,
                 StashCoreMigration,
                 StashMovementNoteMigration,
+                StashMovementMeasurementMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
