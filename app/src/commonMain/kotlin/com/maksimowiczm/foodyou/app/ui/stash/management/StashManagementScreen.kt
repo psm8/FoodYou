@@ -48,12 +48,12 @@ import com.maksimowiczm.foodyou.app.ui.common.extension.hapticDraggableHandle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.*
+import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add_stash
 import foodyou.app.generated.resources.action_delete_stash
-import foodyou.app.generated.resources.action_reorder
 import foodyou.app.generated.resources.action_rename_stash
+import foodyou.app.generated.resources.action_reorder
 import foodyou.app.generated.resources.action_save
 import foodyou.app.generated.resources.description_delete_empty_stash
 import foodyou.app.generated.resources.description_delete_non_empty_stash
@@ -76,6 +76,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun StashManagementScreen(
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
+    onAddToStash: (StashDefinitionId) -> Unit,
     onStartShoppingSession: (StashDefinitionId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -86,6 +87,7 @@ fun StashManagementScreen(
         state = state,
         onBack = onBack,
         onOpenStash = onOpenStash,
+        onAddToStash = onAddToStash,
         onStartShoppingSession = onStartShoppingSession,
         onCreateStash = { name ->
             viewModel.updateDraft(name)
@@ -103,6 +105,7 @@ private fun StashManagementScreen(
     state: StashManagementUiState,
     onBack: () -> Unit,
     onOpenStash: (StashDefinitionId) -> Unit,
+    onAddToStash: (StashDefinitionId) -> Unit,
     onStartShoppingSession: (StashDefinitionId) -> Unit,
     onCreateStash: (String) -> Unit,
     onRenameStash: (StashDefinitionId, String) -> Unit,
@@ -112,7 +115,8 @@ private fun StashManagementScreen(
 ) {
     val dateFormatter = LocalDateFormatter.current
     val hapticFeedback = LocalHapticFeedback.current
-    val existingNames = remember(state.stashes) { state.stashes.map(StashManagementItemUi::name).toSet() }
+    val existingNames =
+        remember(state.stashes) { state.stashes.map(StashManagementItemUi::name).toSet() }
 
     var createDialogVisible by rememberSaveable { mutableStateOf(false) }
     var createName by rememberSaveable { mutableStateOf("") }
@@ -133,7 +137,8 @@ private fun StashManagementScreen(
         }
     }
 
-    val deleteTarget = deleteDialogStashId?.let { stashId -> state.stashes.firstOrNull { it.id == stashId } }
+    val deleteTarget =
+        deleteDialogStashId?.let { stashId -> state.stashes.firstOrNull { it.id == stashId } }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     if (createDialogVisible) {
@@ -244,9 +249,7 @@ private fun StashManagementScreen(
         },
     ) { paddingValues ->
         LazyColumn(
-            modifier =
-                Modifier.fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             state = lazyListState,
             contentPadding = paddingValues.add(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -254,9 +257,7 @@ private fun StashManagementScreen(
             if (!state.isLoading && state.stashes.isEmpty()) {
                 item {
                     Surface(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
@@ -271,16 +272,19 @@ private fun StashManagementScreen(
             }
 
             items(items = orderedStashes, key = { it.id.value }) { stash ->
-                ReorderableItem(state = reorderableLazyListState, key = stash.id.value) { isDragging ->
+                ReorderableItem(state = reorderableLazyListState, key = stash.id.value) { isDragging
+                    ->
                     StashManagementRow(
                         stash = stash,
                         isReordering = isReordering,
                         isDragging = isDragging,
                         lastModifiedLabel = dateFormatter.formatDateTime(stash.lastModifiedAt),
+                        onAddToStash = { onAddToStash(stash.id) },
                         onOpen = { onOpenStash(stash.id) },
                         onStartShoppingSession = { onStartShoppingSession(stash.id) },
                         onRename = {
-                            renameDialogState = RenameDialogState(stashId = stash.id, name = stash.name)
+                            renameDialogState =
+                                RenameDialogState(stashId = stash.id, name = stash.name)
                         },
                         onDelete = { deleteDialogStashId = stash.id },
                     )
@@ -297,6 +301,7 @@ private fun StashManagementRow(
     isReordering: Boolean,
     isDragging: Boolean,
     lastModifiedLabel: String,
+    onAddToStash: () -> Unit,
     onOpen: () -> Unit,
     onStartShoppingSession: () -> Unit,
     onRename: () -> Unit,
@@ -315,9 +320,7 @@ private fun StashManagementRow(
         }
 
     Surface(
-        modifier =
-            modifier.fillMaxWidth()
-                .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
         onClick = if (isReordering) ({}) else onOpen,
         shape = MaterialTheme.shapes.medium,
         color =
@@ -343,10 +346,17 @@ private fun StashManagementRow(
                             )
                         }
                     } else {
+                        IconButton(onClick = onAddToStash) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = stringResource(Res.string.action_add),
+                            )
+                        }
                         IconButton(onClick = onStartShoppingSession) {
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = stringResource(Res.string.headline_stash_shopping_session),
+                                contentDescription =
+                                    stringResource(Res.string.headline_stash_shopping_session),
                             )
                         }
                         IconButton(onClick = onRename) {
@@ -393,7 +403,9 @@ private fun StashNameDialog(
             TextButton(onClick = onConfirm, enabled = canConfirm) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(stringResource(Res.string.action_cancel)) }
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         },
     )
 }
@@ -408,7 +420,11 @@ private fun DeleteStashDialog(
         if (stash.itemCount == 0) {
             stringResource(Res.string.description_delete_empty_stash, stash.name)
         } else {
-            stringResource(Res.string.description_delete_non_empty_stash, stash.name, stash.itemCount)
+            stringResource(
+                Res.string.description_delete_non_empty_stash,
+                stash.name,
+                stash.itemCount,
+            )
         }
 
     AlertDialog(
@@ -416,17 +432,14 @@ private fun DeleteStashDialog(
         title = { Text(stringResource(Res.string.headline_delete_stash)) },
         text = { Text(description) },
         confirmButton = {
-            TextButton(onClick = onDelete) {
-                Text(stringResource(Res.string.action_delete_stash))
-            }
+            TextButton(onClick = onDelete) { Text(stringResource(Res.string.action_delete_stash)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(stringResource(Res.string.action_cancel)) }
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         },
     )
 }
 
-private data class RenameDialogState(
-    val stashId: StashDefinitionId,
-    val name: String,
-)
+private data class RenameDialogState(val stashId: StashDefinitionId, val name: String)

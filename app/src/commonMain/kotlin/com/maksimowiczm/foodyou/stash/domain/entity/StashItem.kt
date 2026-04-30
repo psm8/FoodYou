@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.stash.domain.entity
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import kotlinx.datetime.LocalDateTime
 
 data class StashItem(
@@ -8,6 +9,7 @@ data class StashItem(
     val snapshot: StashSnapshot,
     val quantity: StashQuantity,
     val createdAt: LocalDateTime,
+    val rawMeasurement: Measurement? = null,
 ) {
     val baseUnit: StashQuantityUnit
         get() = quantity.unit
@@ -25,6 +27,7 @@ data class StashItem(
             snapshot: StashSnapshot,
             quantity: StashQuantity,
             createdAt: LocalDateTime,
+            rawMeasurement: Measurement? = null,
         ): StashItem =
             StashItem(
                 id = StashItemId(0),
@@ -32,6 +35,7 @@ data class StashItem(
                 snapshot = snapshot,
                 quantity = quantity,
                 createdAt = createdAt,
+                rawMeasurement = rawMeasurement,
             )
     }
 }

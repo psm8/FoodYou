@@ -29,15 +29,15 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardSettings
 import com.maksimowiczm.foodyou.app.ui.home.master.HomeScreen
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationScreen
-import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotScreen
-import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashSelectRecipeScreen
 import com.maksimowiczm.foodyou.app.ui.language.LanguageScreen
 import com.maksimowiczm.foodyou.app.ui.meal.MealSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizationScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizeNutritionFactsScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddProductScreen
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddSearchScreen
 import com.maksimowiczm.foodyou.app.ui.stash.browser.StashBrowserScreen
 import com.maksimowiczm.foodyou.app.ui.stash.consume.ConsumeStashItemScreen
 import com.maksimowiczm.foodyou.app.ui.stash.management.StashManagementScreen
@@ -99,11 +99,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                         navController.navigateSingleTop(StashManagement)
                     }
                 },
-                onAddProductToStashClick = { stashId ->
-                    navController.navigateSingleTop(HomeCreateStashProduct(stashId?.value))
-                },
-                onAddRecipeSnapshotToStashClick = { stashId ->
-                    navController.navigateSingleTop(HomeSelectRecipeSnapshot(stashId?.value))
+                onAddToStashClick = { stashId ->
+                    navController.navigateSingleTop(StashAddSearch(stashId?.value))
                 },
             )
         }
@@ -125,6 +122,9 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onBack = { navController.popBackStackInclusive<StashManagement>() },
                 onOpenStash = { stashId ->
                     navController.navigateSingleTop(StashBrowser(stashId.value))
+                },
+                onAddToStash = { stashId ->
+                    navController.navigateSingleTop(StashAddSearch(stashId.value))
                 },
                 onStartShoppingSession = { stashId ->
                     navController.navigateSingleTop(StashShopping(stashId.value))
@@ -435,30 +435,23 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onGoals = { navController.navigateSingleTop(GoalsPersonalization) },
             )
         }
-        forwardBackwardComposable<HomeCreateStashProduct> {
-            val (stashId) = it.toRoute<HomeCreateStashProduct>()
+        forwardBackwardComposable<StashAddSearch> {
+            val (stashId) = it.toRoute<StashAddSearch>()
 
-            CreateProductScreen(
-                onBack = { navController.popBackStackInclusive<HomeCreateStashProduct>() },
-                onCreate = { id ->
+            StashAddSearchScreen(
+                onBack = { navController.popBackStackInclusive<StashAddSearch>() },
+                onProductSelected = { productId, measurement ->
                     navController.navigateSingleTop(
-                        HomeAddCreatedProductToStash(productId = id.id, stashId = stashId)
+                        StashAddProduct(
+                            productId = productId.id,
+                            stashId = stashId,
+                            measurement = measurement,
+                        )
                     )
                 },
-                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
-                onUpdateOpenFoodFactsCredentials = {
-                    navController.navigateSingleTop(OpenFoodFactsLogin)
-                },
-            )
-        }
-        forwardBackwardComposable<HomeSelectRecipeSnapshot> {
-            val (stashId) = it.toRoute<HomeSelectRecipeSnapshot>()
-
-            HomeStashSelectRecipeScreen(
-                onBack = { navController.popBackStackInclusive<HomeSelectRecipeSnapshot>() },
                 onRecipeSelected = { recipeId ->
                     navController.navigateSingleTop(
-                        HomeAddRecipeSnapshotToStash(recipeId = recipeId, stashId = stashId)
+                        StashAddRecipeSnapshot(recipeId = recipeId.id, stashId = stashId)
                     )
                 },
                 onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
@@ -467,36 +460,37 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 },
             )
         }
-        forwardBackwardComposable<HomeAddCreatedProductToStash> {
-            val (productId, stashId) = it.toRoute<HomeAddCreatedProductToStash>()
-            val closeHomeStashProductFlow: () -> Unit = {
-                navController.popBackStackInclusive<HomeAddCreatedProductToStash>()
-                navController.popBackStackInclusive<HomeCreateStashProduct>()
+        forwardBackwardComposable<StashAddProduct> {
+            val route = it.toRoute<StashAddProduct>()
+            val closeStashAddProductFlow: () -> Unit = {
+                navController.popBackStackInclusive<StashAddProduct>()
+                navController.popBackStackInclusive<StashAddSearch>()
             }
 
-            HomeStashQuickAddScreen(
-                productId = productId,
-                preferredStashId = stashId,
-                onBack = closeHomeStashProductFlow,
+            StashAddProductScreen(
+                productId = route.productId,
+                preferredStashId = route.stashId,
+                initialMeasurement = route.measurement,
+                onBack = { navController.popBackStackInclusive<StashAddProduct>() },
                 onSaved = { targetStashId ->
-                    closeHomeStashProductFlow()
+                    closeStashAddProductFlow()
                     navController.navigateSingleTop(StashBrowser(targetStashId.value))
                 },
             )
         }
-        forwardBackwardComposable<HomeAddRecipeSnapshotToStash> {
-            val (recipeId, stashId) = it.toRoute<HomeAddRecipeSnapshotToStash>()
-            val closeHomeStashRecipeFlow: () -> Unit = {
-                navController.popBackStackInclusive<HomeAddRecipeSnapshotToStash>()
-                navController.popBackStackInclusive<HomeSelectRecipeSnapshot>()
+        forwardBackwardComposable<StashAddRecipeSnapshot> {
+            val (recipeId, stashId) = it.toRoute<StashAddRecipeSnapshot>()
+            val closeStashAddRecipeFlow: () -> Unit = {
+                navController.popBackStackInclusive<StashAddRecipeSnapshot>()
+                navController.popBackStackInclusive<StashAddSearch>()
             }
 
             HomeStashRecipeSnapshotScreen(
                 recipeId = recipeId,
                 preferredStashId = stashId,
-                onBack = { navController.popBackStackInclusive<HomeAddRecipeSnapshotToStash>() },
+                onBack = { navController.popBackStackInclusive<StashAddRecipeSnapshot>() },
                 onSaved = { targetStashId ->
-                    closeHomeStashRecipeFlow()
+                    closeStashAddRecipeFlow()
                     navController.navigateSingleTop(StashBrowser(targetStashId.value))
                 },
             )
@@ -625,13 +619,36 @@ private class FoodDiaryCreateEntry(
 
 @Serializable private object Personalization
 
-@Serializable private data class HomeCreateStashProduct(val stashId: Long?)
+@Serializable private data class StashAddSearch(val stashId: Long?)
 
-@Serializable private data class HomeSelectRecipeSnapshot(val stashId: Long?)
+@Serializable
+private class StashAddProduct(
+    val productId: Long,
+    val stashId: Long?,
+    private val measurementType: MeasurementType?,
+    private val measurementValue: Double?,
+) {
+    constructor(
+        productId: Long,
+        stashId: Long?,
+        measurement: Measurement?,
+    ) : this(
+        productId = productId,
+        stashId = stashId,
+        measurementType = measurement?.type,
+        measurementValue = measurement?.rawValue,
+    )
 
-@Serializable private data class HomeAddCreatedProductToStash(val productId: Long, val stashId: Long?)
+    val measurement: Measurement?
+        get() =
+            if (measurementType != null && measurementValue != null) {
+                Measurement.from(type = measurementType, rawValue = measurementValue)
+            } else {
+                null
+            }
+}
 
-@Serializable private data class HomeAddRecipeSnapshotToStash(val recipeId: Long, val stashId: Long?)
+@Serializable private data class StashAddRecipeSnapshot(val recipeId: Long, val stashId: Long?)
 
 @Serializable private object HomePersonalization
 

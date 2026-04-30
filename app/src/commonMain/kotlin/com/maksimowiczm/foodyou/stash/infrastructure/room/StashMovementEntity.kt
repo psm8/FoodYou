@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 
@@ -18,7 +19,12 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
                 onDelete = ForeignKey.CASCADE,
             )
         ],
-    indices = [Index(value = ["stashId"]), Index(value = ["itemId"]), Index(value = ["linkedDiaryEntryId"])],
+    indices =
+        [
+            Index(value = ["stashId"]),
+            Index(value = ["itemId"]),
+            Index(value = ["linkedDiaryEntryId"]),
+        ],
 )
 data class StashMovementEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -29,5 +35,7 @@ data class StashMovementEntity(
     val quantityUnit: StashQuantityUnit,
     val linkedDiaryEntryId: Long?,
     val note: String?,
+    val rawMeasurementType: MeasurementType?,
+    val rawMeasurementValue: Double?,
     val createdAtEpochSeconds: Long,
 )

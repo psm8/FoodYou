@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.stash.domain.entity
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import kotlinx.datetime.LocalDateTime
 
 enum class StashMovementOperation {
@@ -22,6 +23,7 @@ data class StashMovement(
     val linkedDiaryEntryId: LinkedDiaryEntryId?,
     val note: String? = null,
     val createdAt: LocalDateTime,
+    val rawMeasurement: Measurement? = null,
 ) {
     companion object {
         fun new(
@@ -32,6 +34,7 @@ data class StashMovement(
             linkedDiaryEntryId: LinkedDiaryEntryId?,
             createdAt: LocalDateTime,
             note: String? = null,
+            rawMeasurement: Measurement? = null,
         ): StashMovement =
             StashMovement(
                 id = StashMovementId(0),
@@ -42,6 +45,7 @@ data class StashMovement(
                 linkedDiaryEntryId = linkedDiaryEntryId,
                 note = note,
                 createdAt = createdAt,
+                rawMeasurement = rawMeasurement,
             )
     }
 }

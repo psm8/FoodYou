@@ -44,8 +44,7 @@ fun HomeScreen(
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
     onConsumeStashItemClick: (StashItemId) -> Unit,
     onViewStashClick: (StashDefinitionId?) -> Unit,
-    onAddProductToStashClick: (StashDefinitionId?) -> Unit,
-    onAddRecipeSnapshotToStashClick: (StashDefinitionId?) -> Unit,
+    onAddToStashClick: (StashDefinitionId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -119,8 +118,7 @@ fun HomeScreen(
                         HomeStashCard(
                             onConsumeItem = onConsumeStashItemClick,
                             onViewStash = onViewStashClick,
-                            onAddProduct = onAddProductToStashClick,
-                            onAddRecipeSnapshot = onAddRecipeSnapshotToStashClick,
+                            onAddToStash = onAddToStashClick,
                             modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
                         )
                 }
