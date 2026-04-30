@@ -1,20 +1,16 @@
 package com.maksimowiczm.foodyou.app.ui.home.stash
 
-import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class HomeStashQuickAddStateTest {
     @Test
-    fun `when multiple stashes exist without a selection, saving is disabled`() {
+    fun `when multiple stashes exist without a selection then explicit selection is required`() {
         val state =
             HomeStashQuickAddState(
-                productId = FoodId.Product(1),
                 isLoading = false,
-                amount = "100",
                 stashes =
                     listOf(
                         HomeStashQuickAddStash(id = StashDefinitionId(1), name = "Fridge"),
@@ -23,19 +19,16 @@ class HomeStashQuickAddStateTest {
             )
 
         assertTrue(state.requiresStashSelection)
-        assertFalse(state.canSave)
     }
 
     @Test
-    fun `when amount is not numeric, the quantity cannot be parsed`() {
+    fun `when one stash exists then explicit selection is not required`() {
         val state =
             HomeStashQuickAddState(
-                productId = FoodId.Product(1),
                 isLoading = false,
-                amount = "a lot",
+                stashes = listOf(HomeStashQuickAddStash(id = StashDefinitionId(1), name = "Fridge")),
             )
 
-        assertEquals(null, state.parsedQuantity)
-        assertFalse(state.canSave)
+        assertFalse(state.requiresStashSelection)
     }
 }

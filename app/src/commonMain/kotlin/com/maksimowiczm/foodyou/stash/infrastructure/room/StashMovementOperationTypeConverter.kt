@@ -10,6 +10,8 @@ internal class StashMovementOperationTypeConverter {
         when (operation) {
             StashMovementOperation.Purchase -> StashMovementOperationSQLConstants.PURCHASE
             StashMovementOperation.CreateSnapshot -> StashMovementOperationSQLConstants.CREATE_SNAPSHOT
+            StashMovementOperation.ManualQuickAdd ->
+                StashMovementOperationSQLConstants.MANUAL_QUICK_ADD
             StashMovementOperation.DirectConsume -> StashMovementOperationSQLConstants.DIRECT_CONSUME
             StashMovementOperation.IngredientSubtract ->
                 StashMovementOperationSQLConstants.INGREDIENT_SUBTRACT
@@ -27,6 +29,8 @@ internal class StashMovementOperationTypeConverter {
             StashMovementOperationSQLConstants.PURCHASE -> StashMovementOperation.Purchase
             StashMovementOperationSQLConstants.CREATE_SNAPSHOT ->
                 StashMovementOperation.CreateSnapshot
+            StashMovementOperationSQLConstants.MANUAL_QUICK_ADD ->
+                StashMovementOperation.ManualQuickAdd
             StashMovementOperationSQLConstants.DIRECT_CONSUME ->
                 StashMovementOperation.DirectConsume
             StashMovementOperationSQLConstants.INGREDIENT_SUBTRACT ->
@@ -52,4 +56,5 @@ internal object StashMovementOperationSQLConstants {
     const val MANUAL_ADJUST = 5
     const val AUTO_REVERSAL_ON_EDIT = 6
     const val AUTO_REVERSAL_ON_DELETE = 7
+    const val MANUAL_QUICK_ADD = 8
 }

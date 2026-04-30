@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.ConfirmShoppingSessionUseCa
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConsumeFromStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.CreateManualStashSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.DeleteStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.LoadStashManagementStashesUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.LogRecipeToMealWithStashSubtractionUseCase
@@ -35,6 +36,7 @@ fun Module.stashDomainModule() {
     factoryOf(::AddToShoppingSessionUseCase)
     factoryOf(::ConfirmShoppingSessionUseCase)
     factoryOf(::CreateAnonymousDishSnapshotUseCase)
+    factoryOf(::CreateManualStashSnapshotUseCase)
     factoryOf(::AssessRecipeStashAvailabilityUseCase)
     factoryOf(::LogRecipeToMealWithStashSubtractionUseCase)
     factoryOf(::RestoreLinkedDiaryEntryStashUseCase)
