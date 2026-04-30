@@ -32,6 +32,8 @@ data class StashItemEntity(
     val quantity: Double,
     val baseUnit: StashQuantityUnit,
     val createdAtEpochSeconds: Long,
+    val measurementType: MeasurementType?,
+    val measurementRawValue: Double?,
     val rawMeasurementType: MeasurementType?,
     val rawMeasurementValue: Double?,
     val snapshotProductId: Long?,

@@ -66,17 +66,56 @@ class ShoppingSessionUseCaseTest {
                 addUseCase.add(
                     session = started,
                     productId = FoodId.Product(1),
-                    quantity = StashQuantity.grams(250.0),
+                    measurement = Measurement.Gram(250.0),
                 )
             )
 
         assertEquals(1, updated.items.size)
         assertEquals(250.0, updated.totalNutritionFacts.energy.value)
         assertEquals(FoodId.Product(1), updated.items.single().productId)
+        assertEquals(Measurement.Gram(250.0), updated.items.single().measurement)
+        assertEquals(StashQuantity.grams(250.0), updated.items.single().quantity)
     }
 
     @Test
-    fun when_confirming_a_session_with_five_items_then_everything_is_added_to_stash_and_diary_stays_untouched() = runBlocking {
+    fun when_adding_same_product_multiple_times_then_session_merges_it_into_one_logical_item() = runBlocking {
+        val stash = sampleStash(name = "Fridge")
+        val startUseCase = shoppingSessionStarter(FakeStashRepository(initialStashes = listOf(stash)))
+        val addUseCase =
+            AddToShoppingSessionUseCase(
+                productRepository =
+                    FakeProductRepository(
+                        listOf(sampleProduct(id = 1L, packageWeight = 1000.0, nutritionFacts = nutritionWithEnergy(100.0)))
+                    ),
+                logger = NoOpLogger,
+            )
+
+        val started = assertSuccess(startUseCase.start(stash.id))
+        val withOnePackage =
+            assertSuccess(
+                addUseCase.add(
+                    session = started,
+                    productId = FoodId.Product(1L),
+                    measurement = Measurement.Package(1.0),
+                )
+            )
+        val merged =
+            assertSuccess(
+                addUseCase.add(
+                    session = withOnePackage,
+                    productId = FoodId.Product(1L),
+                    measurement = Measurement.Package(0.5),
+                )
+            )
+
+        assertEquals(1, merged.items.size)
+        assertEquals(Measurement.Package(1.5), merged.items.single().measurement)
+        assertEquals(StashQuantity.grams(1500.0), merged.items.single().quantity)
+        assertEquals(1500.0, merged.totalNutritionFacts.energy.value)
+    }
+
+    @Test
+    fun when_confirming_a_session_with_merged_items_then_everything_is_added_to_stash_and_diary_stays_untouched() = runBlocking {
         val stash = sampleStash(name = "Fridge")
         val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
         val productRepository =
@@ -103,26 +142,50 @@ class ShoppingSessionUseCaseTest {
         var session = assertSuccess(startUseCase.start(stash.id))
         session =
             assertSuccess(
-                addUseCase.add(session = session, productId = FoodId.Product(1L), quantity = StashQuantity.grams(300.0))
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(1L),
+                    measurement = Measurement.Package(1.0),
+                )
             )
         session =
             assertSuccess(
-                addUseCase.add(session = session, productId = FoodId.Product(2L), quantity = StashQuantity.grams(500.0))
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(2L),
+                    measurement = Measurement.Gram(500.0),
+                )
             )
         session =
             assertSuccess(
-                addUseCase.add(session = session, productId = FoodId.Product(3L), quantity = StashQuantity.grams(120.0))
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(3L),
+                    measurement = Measurement.Serving(1.0),
+                )
             )
         session =
             assertSuccess(
-                addUseCase.add(session = session, productId = FoodId.Product(4L), quantity = StashQuantity.grams(80.0))
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(4L),
+                    measurement = Measurement.Gram(80.0),
+                )
             )
         session =
             assertSuccess(
                 addUseCase.add(
                     session = session,
                     productId = FoodId.Product(5L),
-                    quantity = StashQuantity.milliliters(750.0),
+                    measurement = Measurement.Package(0.75),
+                )
+            )
+        session =
+            assertSuccess(
+                addUseCase.add(
+                    session = session,
+                    productId = FoodId.Product(1L),
+                    measurement = Measurement.Package(0.5),
                 )
             )
 
@@ -133,13 +196,23 @@ class ShoppingSessionUseCaseTest {
         assertEquals(5, stashRepository.allMovements().size)
         assertEquals(
             listOf(
-                StashQuantity.grams(300.0),
+                StashQuantity.grams(1500.0),
                 StashQuantity.grams(500.0),
-                StashQuantity.grams(120.0),
+                StashQuantity.grams(250.0),
                 StashQuantity.grams(80.0),
                 StashQuantity.milliliters(750.0),
             ),
             stashRepository.allItems().map { it.quantity },
+        )
+        assertEquals(
+            listOf(
+                Measurement.Package(1.5),
+                Measurement.Gram(500.0),
+                Measurement.Serving(1.0),
+                Measurement.Gram(80.0),
+                Measurement.Package(0.75),
+            ),
+            stashRepository.allItems().map { it.measurement },
         )
         assertEquals(
             List(5) { StashMovementOperation.Purchase },
@@ -176,12 +249,14 @@ class ShoppingSessionUseCaseTest {
                             id = ShoppingSessionItemId("session-item-1"),
                             productId = FoodId.Product(1),
                             snapshot = RawProductSnapshot.from(sampleProduct()),
+                            measurement = Measurement.Gram(200.0),
                             quantity = StashQuantity.grams(200.0),
                         ),
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("session-item-2"),
                             productId = FoodId.Product(2),
                             snapshot = RawProductSnapshot.from(sampleProduct(id = 2, name = "Yoghurt")),
+                            measurement = Measurement.Gram(150.0),
                             quantity = StashQuantity.grams(150.0),
                         ),
                     ),

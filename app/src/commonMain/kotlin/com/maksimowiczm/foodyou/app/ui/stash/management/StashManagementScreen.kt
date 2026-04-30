@@ -356,7 +356,7 @@ private fun StashManagementRow(
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
                                 contentDescription =
-                                    stringResource(Res.string.headline_stash_shopping_session),
+                                    stringResource(Res.string.action_start_shopping_session),
                             )
                         }
                         IconButton(onClick = onRename) {

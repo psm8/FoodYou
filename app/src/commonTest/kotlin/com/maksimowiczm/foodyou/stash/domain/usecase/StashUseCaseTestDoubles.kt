@@ -505,6 +505,7 @@ internal fun sampleRawProductItem(
         id = StashItemId(id),
         stashId = StashDefinitionId(stashId),
         snapshot = RawProductSnapshot.from(product),
+        measurement = null,
         quantity = quantity,
         createdAt = FIXED_NOW,
     )
@@ -526,6 +527,7 @@ internal fun sampleAnonymousDishItem(
                 totalAmount = totalAmount,
                 servingsMade = servingsMade,
             ),
+        measurement = null,
         quantity = quantity,
         createdAt = FIXED_NOW,
     )

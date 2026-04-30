@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 35,
-    "identityHash": "9a01ae40a3f0ce675d823b812cbbec66",
+    "identityHash": "ffa59ca80723d1299f3ebd61c349029c",
     "entities": [
       {
         "tableName": "Product",
@@ -1805,7 +1805,7 @@
       },
       {
         "tableName": "StashItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `stashId` INTEGER NOT NULL, `snapshotType` INTEGER NOT NULL, `quantity` REAL NOT NULL, `baseUnit` INTEGER NOT NULL, `createdAtEpochSeconds` INTEGER NOT NULL, `snapshotProductId` INTEGER, `snapshotName` TEXT NOT NULL, `snapshotNote` TEXT, `snapshotIsLiquid` INTEGER NOT NULL, `snapshotBrand` TEXT, `snapshotBarcode` TEXT, `snapshotSourceType` INTEGER, `snapshotSourceUrl` TEXT, `snapshotServingWeight` REAL, `snapshotTotalWeight` REAL, `snapshotTotalAmount` REAL, `snapshotTotalAmountUnit` INTEGER, `snapshot_energy` REAL, `snapshot_proteins` REAL, `snapshot_fats` REAL, `snapshot_saturatedFats` REAL, `snapshot_transFats` REAL, `snapshot_monounsaturatedFats` REAL, `snapshot_polyunsaturatedFats` REAL, `snapshot_omega3` REAL, `snapshot_omega6` REAL, `snapshot_carbohydrates` REAL, `snapshot_sugars` REAL, `snapshot_addedSugars` REAL, `snapshot_dietaryFiber` REAL, `snapshot_solubleFiber` REAL, `snapshot_insolubleFiber` REAL, `snapshot_salt` REAL, `snapshot_cholesterolMilli` REAL, `snapshot_caffeineMilli` REAL, `snapshot_vitaminAMicro` REAL, `snapshot_vitaminB1Milli` REAL, `snapshot_vitaminB2Milli` REAL, `snapshot_vitaminB3Milli` REAL, `snapshot_vitaminB5Milli` REAL, `snapshot_vitaminB6Milli` REAL, `snapshot_vitaminB7Micro` REAL, `snapshot_vitaminB9Micro` REAL, `snapshot_vitaminB12Micro` REAL, `snapshot_vitaminCMilli` REAL, `snapshot_vitaminDMicro` REAL, `snapshot_vitaminEMilli` REAL, `snapshot_vitaminKMicro` REAL, `snapshot_manganeseMilli` REAL, `snapshot_magnesiumMilli` REAL, `snapshot_potassiumMilli` REAL, `snapshot_calciumMilli` REAL, `snapshot_copperMilli` REAL, `snapshot_zincMilli` REAL, `snapshot_sodiumMilli` REAL, `snapshot_ironMilli` REAL, `snapshot_phosphorusMilli` REAL, `snapshot_seleniumMicro` REAL, `snapshot_iodineMicro` REAL, `snapshot_chromiumMicro` REAL, FOREIGN KEY(`stashId`) REFERENCES `StashDefinition`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `stashId` INTEGER NOT NULL, `snapshotType` INTEGER NOT NULL, `quantity` REAL NOT NULL, `baseUnit` INTEGER NOT NULL, `createdAtEpochSeconds` INTEGER NOT NULL, `measurementType` INTEGER, `measurementRawValue` REAL, `snapshotProductId` INTEGER, `snapshotName` TEXT NOT NULL, `snapshotNote` TEXT, `snapshotIsLiquid` INTEGER NOT NULL, `snapshotBrand` TEXT, `snapshotBarcode` TEXT, `snapshotSourceType` INTEGER, `snapshotSourceUrl` TEXT, `snapshotServingWeight` REAL, `snapshotTotalWeight` REAL, `snapshotTotalAmount` REAL, `snapshotTotalAmountUnit` INTEGER, `snapshot_energy` REAL, `snapshot_proteins` REAL, `snapshot_fats` REAL, `snapshot_saturatedFats` REAL, `snapshot_transFats` REAL, `snapshot_monounsaturatedFats` REAL, `snapshot_polyunsaturatedFats` REAL, `snapshot_omega3` REAL, `snapshot_omega6` REAL, `snapshot_carbohydrates` REAL, `snapshot_sugars` REAL, `snapshot_addedSugars` REAL, `snapshot_dietaryFiber` REAL, `snapshot_solubleFiber` REAL, `snapshot_insolubleFiber` REAL, `snapshot_salt` REAL, `snapshot_cholesterolMilli` REAL, `snapshot_caffeineMilli` REAL, `snapshot_vitaminAMicro` REAL, `snapshot_vitaminB1Milli` REAL, `snapshot_vitaminB2Milli` REAL, `snapshot_vitaminB3Milli` REAL, `snapshot_vitaminB5Milli` REAL, `snapshot_vitaminB6Milli` REAL, `snapshot_vitaminB7Micro` REAL, `snapshot_vitaminB9Micro` REAL, `snapshot_vitaminB12Micro` REAL, `snapshot_vitaminCMilli` REAL, `snapshot_vitaminDMicro` REAL, `snapshot_vitaminEMilli` REAL, `snapshot_vitaminKMicro` REAL, `snapshot_manganeseMilli` REAL, `snapshot_magnesiumMilli` REAL, `snapshot_potassiumMilli` REAL, `snapshot_calciumMilli` REAL, `snapshot_copperMilli` REAL, `snapshot_zincMilli` REAL, `snapshot_sodiumMilli` REAL, `snapshot_ironMilli` REAL, `snapshot_phosphorusMilli` REAL, `snapshot_seleniumMicro` REAL, `snapshot_iodineMicro` REAL, `snapshot_chromiumMicro` REAL, FOREIGN KEY(`stashId`) REFERENCES `StashDefinition`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1842,6 +1842,16 @@
             "columnName": "createdAtEpochSeconds",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "measurementType",
+            "columnName": "measurementType",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "measurementRawValue",
+            "columnName": "measurementRawValue",
+            "affinity": "REAL"
           },
           {
             "fieldPath": "snapshotProductId",
@@ -2281,7 +2291,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9a01ae40a3f0ce675d823b812cbbec66')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ffa59ca80723d1299f3ebd61c349029c')"
     ]
   }
 }

@@ -7,6 +7,7 @@ data class StashItem(
     val id: StashItemId,
     val stashId: StashDefinitionId,
     val snapshot: StashSnapshot,
+    val measurement: Measurement? = null,
     val quantity: StashQuantity,
     val createdAt: LocalDateTime,
     val rawMeasurement: Measurement? = null,
@@ -25,6 +26,7 @@ data class StashItem(
         fun new(
             stashId: StashDefinitionId,
             snapshot: StashSnapshot,
+            measurement: Measurement? = null,
             quantity: StashQuantity,
             createdAt: LocalDateTime,
             rawMeasurement: Measurement? = null,
@@ -33,6 +35,7 @@ data class StashItem(
                 id = StashItemId(0),
                 stashId = stashId,
                 snapshot = snapshot,
+                measurement = measurement,
                 quantity = quantity,
                 createdAt = createdAt,
                 rawMeasurement = rawMeasurement,

@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,18 +25,28 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
+import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
+import com.maksimowiczm.foodyou.app.ui.food.component.rememberMeasurementPickerState
 import com.maksimowiczm.foodyou.app.ui.food.search.FoodSearchApp
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
@@ -42,19 +54,22 @@ import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
 import foodyou.app.generated.resources.action_confirm
 import foodyou.app.generated.resources.action_remove_session_item
-import foodyou.app.generated.resources.action_save
+import foodyou.app.generated.resources.action_show_details
 import foodyou.app.generated.resources.description_stash_shopping_empty
+import foodyou.app.generated.resources.description_stash_shopping_products_only
 import foodyou.app.generated.resources.description_stash_shopping_search
 import foodyou.app.generated.resources.headline_stash_shopping_preview
+import foodyou.app.generated.resources.headline_stash_shopping_selected_product
 import foodyou.app.generated.resources.headline_stash_shopping_session
 import foodyou.app.generated.resources.label_home_stash_select
 import foodyou.app.generated.resources.label_stash_shopping_pending_quantity
 import foodyou.app.generated.resources.label_stash_shopping_total_calories
 import foodyou.app.generated.resources.message_home_stash_select_stash
 import foodyou.app.generated.resources.message_stash_shopping_add_failed
+import foodyou.app.generated.resources.message_stash_shopping_choose_product
 import foodyou.app.generated.resources.message_stash_shopping_confirm_failed
 import foodyou.app.generated.resources.message_stash_shopping_invalid_quantity
-import foodyou.app.generated.resources.message_stash_shopping_select_product
+import foodyou.app.generated.resources.message_stash_shopping_products_only
 import foodyou.app.generated.resources.message_stash_shopping_start_failed
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
@@ -83,7 +98,7 @@ internal fun ShoppingSessionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val latestOnFinished = rememberUpdatedState(onFinished)
-    val invalidFoodSelectionMessage = stringResource(Res.string.message_stash_shopping_select_product)
+    val productsOnlyMessage = stringResource(Res.string.message_stash_shopping_products_only)
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
@@ -94,7 +109,7 @@ internal fun ShoppingSessionScreen(
     val errorMessage =
         when (state.error) {
             ShoppingSessionUiError.StashSelectionRequired -> stringResource(Res.string.message_home_stash_select_stash)
-            ShoppingSessionUiError.ProductSelectionRequired -> stringResource(Res.string.message_stash_shopping_select_product)
+            ShoppingSessionUiError.ProductSelectionRequired -> stringResource(Res.string.message_stash_shopping_choose_product)
             ShoppingSessionUiError.InvalidQuantity -> stringResource(Res.string.message_stash_shopping_invalid_quantity)
             ShoppingSessionUiError.StartFailed -> stringResource(Res.string.message_stash_shopping_start_failed)
             ShoppingSessionUiError.AddFailed -> stringResource(Res.string.message_stash_shopping_add_failed)
@@ -113,15 +128,14 @@ internal fun ShoppingSessionScreen(
         onBack = onBack,
         onSelectStash = viewModel::selectStash,
         onSelectProduct = viewModel::selectProduct,
-        onPendingQuantityChange = viewModel::updatePendingQuantity,
+        onPendingMeasurementChange = viewModel::updatePendingMeasurement,
         onAddPendingProduct = viewModel::addPendingProduct,
         onUpdateItemQuantity = viewModel::updateItemQuantity,
-        onSaveItemQuantity = viewModel::saveItemQuantity,
         onRemoveItem = viewModel::removeItem,
         onConfirm = viewModel::confirm,
         onInvalidFoodSelection = {
             coroutineScope.launch {
-                snackbarHostState.showSnackbar(invalidFoodSelectionMessage)
+                snackbarHostState.showSnackbar(productsOnlyMessage)
             }
         },
         onUpdateUsdaApiKey = onUpdateUsdaApiKey,
@@ -137,10 +151,9 @@ private fun ShoppingSessionScreen(
     onBack: () -> Unit,
     onSelectStash: (StashDefinitionId) -> Unit,
     onSelectProduct: (FoodSearch.Product) -> Unit,
-    onPendingQuantityChange: (String) -> Unit,
+    onPendingMeasurementChange: (Measurement) -> Unit,
     onAddPendingProduct: () -> Unit,
     onUpdateItemQuantity: (ShoppingSessionListItemId, String) -> Unit,
-    onSaveItemQuantity: (ShoppingSessionListItemId) -> Unit,
     onRemoveItem: (ShoppingSessionListItemId) -> Unit,
     onConfirm: () -> Unit,
     onInvalidFoodSelection: () -> Unit,
@@ -179,22 +192,17 @@ private fun ShoppingSessionScreen(
                 Modifier.fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SessionControlCard(
+            SessionComposerCard(
                 state = state,
                 onSelectStash = onSelectStash,
-                onPendingQuantityChange = onPendingQuantityChange,
+                onPendingMeasurementChange = onPendingMeasurementChange,
                 onAddPendingProduct = onAddPendingProduct,
             )
 
-            PreviewCard(
-                state = state,
-                onUpdateItemQuantity = onUpdateItemQuantity,
-                onSaveItemQuantity = onSaveItemQuantity,
-                onRemoveItem = onRemoveItem,
-            )
+            ProductsOnlyHint()
 
             FoodSearchApp(
                 onFoodClick = { model, _ ->
@@ -207,15 +215,21 @@ private fun ShoppingSessionScreen(
                 onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
                 modifier = Modifier.fillMaxWidth().weight(1f),
             )
+
+            PreviewCard(
+                state = state,
+                onUpdateItemQuantity = onUpdateItemQuantity,
+                onRemoveItem = onRemoveItem,
+            )
         }
     }
 }
 
 @Composable
-private fun SessionControlCard(
+private fun SessionComposerCard(
     state: ShoppingSessionUiState,
     onSelectStash: (StashDefinitionId) -> Unit,
-    onPendingQuantityChange: (String) -> Unit,
+    onPendingMeasurementChange: (Measurement) -> Unit,
     onAddPendingProduct: () -> Unit,
 ) {
     Surface(
@@ -250,29 +264,54 @@ private fun SessionControlCard(
                 }
             }
 
+            val selectedProduct = state.selectedProduct
+            if (selectedProduct == null || state.pendingMeasurement == null) {
+                Text(
+                    text = stringResource(Res.string.message_stash_shopping_choose_product),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                return@Column
+            }
+
             Text(
-                text = state.selectedProduct?.name ?: stringResource(Res.string.message_stash_shopping_select_product),
+                text = stringResource(Res.string.headline_stash_shopping_selected_product),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = selectedProduct.name,
                 style = MaterialTheme.typography.titleMedium,
             )
 
+            key(selectedProduct.id, state.pendingMeasurement) {
+                val measurementState =
+                    rememberMeasurementPickerState(
+                        suggestions = selectedProduct.suggestions.distinct(),
+                        possibleTypes = selectedProduct.possibleMeasurementTypes,
+                        selectedMeasurement = state.pendingMeasurement,
+                    )
+                LaunchedEffect(measurementState.measurement) {
+                    onPendingMeasurementChange(measurementState.measurement)
+                }
+                MeasurementPicker(state = measurementState, modifier = Modifier.fillMaxWidth())
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                OutlinedTextField(
-                    value = state.pendingQuantity,
-                    onValueChange = onPendingQuantityChange,
-                    label = {
-                        Text(
+                Text(
+                    text =
+                        state.pendingQuantityValue?.let { quantity ->
                             stringResource(
                                 Res.string.label_stash_shopping_pending_quantity,
-                                state.selectedProduct?.quantityUnit?.label().orEmpty(),
-                            )
-                        )
-                    },
+                                quantity.unit.label(),
+                            ) + ": " + quantity.amount.formatClipZeros()
+                        } ?: stringResource(Res.string.message_stash_shopping_invalid_quantity),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
                 TextButton(onClick = onAddPendingProduct, enabled = state.canAddPendingProduct) {
                     Text(stringResource(Res.string.action_add))
@@ -283,12 +322,29 @@ private fun SessionControlCard(
 }
 
 @Composable
+private fun ProductsOnlyHint() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = stringResource(Res.string.description_stash_shopping_products_only),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
 private fun PreviewCard(
     state: ShoppingSessionUiState,
     onUpdateItemQuantity: (ShoppingSessionListItemId, String) -> Unit,
-    onSaveItemQuantity: (ShoppingSessionListItemId) -> Unit,
     onRemoveItem: (ShoppingSessionListItemId) -> Unit,
 ) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -298,20 +354,31 @@ private fun PreviewCard(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = stringResource(Res.string.headline_stash_shopping_preview),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text =
-                    stringResource(
-                        Res.string.label_stash_shopping_total_calories,
-                        state.totalCalories.formatClipZeros(),
-                        stringResource(Res.string.unit_kcal),
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(Res.string.headline_stash_shopping_preview),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.label_stash_shopping_total_calories,
+                                state.totalCalories.formatClipZeros(),
+                                stringResource(Res.string.unit_kcal),
+                            ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(stringResource(Res.string.action_show_details))
+                }
+            }
+
+            if (!expanded) {
+                return@Column
+            }
 
             if (state.items.isEmpty()) {
                 Text(
@@ -322,7 +389,10 @@ private fun PreviewCard(
                 return@Column
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(state.items, key = { it.id.value }) { item ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -335,32 +405,35 @@ private fun PreviewCard(
                         ) {
                             Text(item.name, style = MaterialTheme.typography.titleSmall)
                             Text(
-                                text = "${item.totalCalories.formatClipZeros()} ${stringResource(Res.string.unit_kcal)}",
+                                text =
+                                    item.measurement.stringResourceWithWeight(
+                                        totalWeight = item.sessionItem.snapshot.totalWeight,
+                                        servingWeight = item.sessionItem.snapshot.servingWeight,
+                                        isLiquid = item.sessionItem.snapshot.isLiquid,
+                                    ) ?: item.measurement.stringResource(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            OutlinedTextField(
+                                value = item.quantityText,
+                                onValueChange = { onUpdateItemQuantity(item.id, it) },
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            Res.string.label_stash_shopping_pending_quantity,
+                                            item.quantityUnit.label(),
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            )
+                            HorizontalDivider()
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.End,
                             ) {
-                                OutlinedTextField(
-                                    value = item.quantityText,
-                                    onValueChange = { onUpdateItemQuantity(item.id, it) },
-                                    label = {
-                                        Text(
-                                            stringResource(
-                                                Res.string.label_stash_shopping_pending_quantity,
-                                                item.quantityUnit.label(),
-                                            )
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                )
-                                TextButton(onClick = { onSaveItemQuantity(item.id) }) {
-                                    Text(stringResource(Res.string.action_save))
-                                }
                                 TextButton(onClick = { onRemoveItem(item.id) }) {
                                     Text(stringResource(Res.string.action_remove_session_item))
                                 }

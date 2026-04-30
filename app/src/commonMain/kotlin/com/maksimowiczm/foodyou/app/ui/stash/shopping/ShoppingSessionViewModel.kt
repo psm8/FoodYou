@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.stash.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
@@ -39,7 +40,7 @@ internal class ShoppingSessionViewModel(
     private val sessionHeader = MutableStateFlow<ShoppingSessionHeader?>(null)
     private val selectedStashId = MutableStateFlow(stashId)
     private val selectedProduct = MutableStateFlow<ShoppingSessionSelectedProduct?>(null)
-    private val pendingQuantity = MutableStateFlow("")
+    private val pendingMeasurement = MutableStateFlow<Measurement?>(null)
     private val items = MutableStateFlow<List<ShoppingSessionListItem>>(emptyList())
     private val error = MutableStateFlow<ShoppingSessionUiError?>(null)
     private val isLoading = MutableStateFlow(true)
@@ -63,7 +64,7 @@ internal class ShoppingSessionViewModel(
             isConfirming,
             selectedStashId,
             selectedProduct,
-            pendingQuantity,
+            pendingMeasurement,
             items,
             error,
         ) { values: Array<Any?> ->
@@ -72,7 +73,7 @@ internal class ShoppingSessionViewModel(
             val isConfirming = values[2] as Boolean
             val selectedStashId = values[3] as StashDefinitionId?
             val selectedProduct = values[4] as ShoppingSessionSelectedProduct?
-            val pendingQuantity = values[5] as String
+            val pendingMeasurement = values[5] as Measurement?
             val items = values[6] as List<ShoppingSessionListItem>
             val error = values[7] as ShoppingSessionUiError?
 
@@ -82,7 +83,7 @@ internal class ShoppingSessionViewModel(
                 stashOptions = stashOptions,
                 selectedStashId = resolveSelectedStash(stashOptions, selectedStashId),
                 selectedProduct = selectedProduct,
-                pendingQuantity = pendingQuantity,
+                pendingMeasurement = pendingMeasurement,
                 items = items,
                 error = error,
             )
@@ -117,13 +118,14 @@ internal class ShoppingSessionViewModel(
     }
 
     fun selectProduct(product: FoodSearch.Product) {
-        selectedProduct.value = ShoppingSessionSelectedProduct.from(product)
-        pendingQuantity.value = ""
+        val selectedProduct = ShoppingSessionSelectedProduct.from(product)
+        this.selectedProduct.value = selectedProduct
+        pendingMeasurement.value = selectedProduct.suggestedMeasurement
         clearError(ShoppingSessionUiError.ProductSelectionRequired)
     }
 
-    fun updatePendingQuantity(value: String) {
-        pendingQuantity.value = value
+    fun updatePendingMeasurement(measurement: Measurement) {
+        pendingMeasurement.value = measurement
         clearError(ShoppingSessionUiError.InvalidQuantity)
         clearError(ShoppingSessionUiError.AddFailed)
     }
@@ -140,11 +142,15 @@ internal class ShoppingSessionViewModel(
                 error.value = ShoppingSessionUiError.ProductSelectionRequired
                 return
             }
-        val quantity =
-            currentState.pendingQuantityValue ?: run {
+        val measurement =
+            currentState.pendingMeasurement ?: run {
                 error.value = ShoppingSessionUiError.InvalidQuantity
                 return
             }
+        if (currentState.pendingQuantityValue == null) {
+            error.value = ShoppingSessionUiError.InvalidQuantity
+            return
+        }
 
         scope.launch {
             if (!ensureSession(selectedStashId)) {
@@ -155,16 +161,13 @@ internal class ShoppingSessionViewModel(
                 addToShoppingSessionUseCase.add(
                     session = currentSession(selectedStashId),
                     productId = selectedProduct.id,
-                    quantity = quantity,
+                    measurement = measurement,
                 )
 
             when (result) {
                 is Result.Success -> {
-                    val addedItem = result.data.items.lastOrNull() ?: return@launch
-                    items.update {
-                        it + ShoppingSessionListItem.from(nextItemId(), addedItem)
-                    }
-                    pendingQuantity.value = ""
+                    items.value = result.data.items.map(::toPreviewItem)
+                    pendingMeasurement.value = null
                     this@ShoppingSessionViewModel.selectedProduct.value = null
                     error.value = null
                 }
@@ -189,25 +192,6 @@ internal class ShoppingSessionViewModel(
                 }
             }
         }
-    }
-
-    fun saveItemQuantity(itemId: ShoppingSessionListItemId) {
-        val item = items.value.firstOrNull { it.id == itemId } ?: return
-        val updatedItem =
-            item.saveQuantity() ?: run {
-                error.value = ShoppingSessionUiError.InvalidQuantity
-                return
-            }
-
-        items.update { currentItems ->
-            currentItems.map { currentItem ->
-                if (currentItem.id == itemId) {
-                    updatedItem
-                } else {
-                    currentItem
-                }
-            }
-        }
         clearError(ShoppingSessionUiError.InvalidQuantity)
     }
 
@@ -222,13 +206,8 @@ internal class ShoppingSessionViewModel(
                 error.value = ShoppingSessionUiError.StashSelectionRequired
                 return
             }
-        val resolvedItems =
-            resolveCurrentItems() ?: run {
-                error.value = ShoppingSessionUiError.InvalidQuantity
-                return
-            }
         if (!currentState.canConfirm) {
-            error.value = ShoppingSessionUiError.ConfirmFailed
+            error.value = ShoppingSessionUiError.InvalidQuantity
             return
         }
 
@@ -238,7 +217,7 @@ internal class ShoppingSessionViewModel(
             }
 
             isConfirming.value = true
-            val result = confirmShoppingSessionUseCase.confirm(currentSession(selectedStashId, resolvedItems))
+            val result = confirmShoppingSessionUseCase.confirm(currentSession(selectedStashId))
             isConfirming.value = false
 
             when (result) {
@@ -311,21 +290,20 @@ internal class ShoppingSessionViewModel(
     private fun clearDraft() {
         items.value = emptyList()
         selectedProduct.value = null
-        pendingQuantity.value = ""
-    }
-
-    private fun resolveCurrentItems(): List<ShoppingSessionListItem>? {
-        val resolvedItems =
-            items.value.map { item ->
-                item.saveQuantity() ?: return null
-            }
-        items.value = resolvedItems
-        return resolvedItems
+        pendingMeasurement.value = null
     }
 
     private fun nextItemId(): ShoppingSessionListItemId {
         nextItemId += 1
         return ShoppingSessionListItemId("shopping-session-item-$nextItemId")
+    }
+
+    private fun toPreviewItem(sessionItem: com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem): ShoppingSessionListItem {
+        val existingItem = items.value.firstOrNull { it.sessionItem.id == sessionItem.id }
+        return ShoppingSessionListItem.from(
+            id = existingItem?.id ?: nextItemId(),
+            sessionItem = sessionItem,
+        )
     }
 
     private fun clearError(target: ShoppingSessionUiError) {
