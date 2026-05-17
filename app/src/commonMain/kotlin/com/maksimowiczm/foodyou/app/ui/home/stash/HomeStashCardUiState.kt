@@ -3,7 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 import androidx.compose.runtime.Immutable
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummary
 
 @Immutable
@@ -36,7 +36,7 @@ internal data class HomeStashCardItemUi(
     val id: StashItemId,
     val name: String,
     val stashName: String,
-    val quantity: StashQuantity,
+    val quantity: StashMeasurement,
 ) {
     companion object {
         fun from(item: com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummaryItem) =
@@ -44,7 +44,7 @@ internal data class HomeStashCardItemUi(
                 id = item.id,
                 name = item.name,
                 stashName = item.stashName,
-                quantity = item.quantity,
+                quantity = item.measurement,
             )
     }
 }

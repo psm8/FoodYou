@@ -4,13 +4,12 @@ import androidx.compose.runtime.Immutable
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
-import com.maksimowiczm.foodyou.stash.domain.entity.scaleToQuantityOrFallback
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.jvm.JvmInline
 
 @Immutable
@@ -27,7 +26,7 @@ internal data class ShoppingSessionSelectedProduct(
     val possibleMeasurementTypes: List<MeasurementType>,
     val suggestions: List<Measurement>,
 ) {
-    fun toStashQuantityOrNull(measurement: Measurement?): StashQuantity? {
+    fun toStashQuantityOrNull(measurement: Measurement?): StashMeasurement? {
         val selectedMeasurement = measurement ?: return null
         val weight =
             when (selectedMeasurement) {
@@ -43,9 +42,9 @@ internal data class ShoppingSessionSelectedProduct(
         }
 
         return if (isLiquid) {
-            StashQuantity.milliliters(weight)
+            StashMeasurement.milliliters(weight)
         } else {
-            StashQuantity.grams(weight)
+            StashMeasurement.grams(weight)
         }
     }
 
@@ -101,10 +100,10 @@ internal data class ShoppingSessionListItem(
         get() = sessionItem.snapshot.name
 
     val measurement: Measurement
-        get() = sessionItem.measurement
+        get() = sessionItem.measurement.measurement
 
-    val quantityUnit: StashQuantityUnit
-        get() = sessionItem.quantity.unit
+    val quantityUnit: MeasurementType
+        get() = sessionItem.measurement.type
 
     val totalCalories: Double
         get() =
@@ -112,7 +111,7 @@ internal data class ShoppingSessionListItem(
                 (parsedQuantityAmount / 100.0)
 
     private val parsedQuantityAmount: Double
-        get() = quantityText.toDoubleOrNull() ?: sessionItem.quantity.amount
+        get() = quantityText.toDoubleOrNull() ?: sessionItem.measurement.measurement.rawValue
 
     fun updateQuantity(quantityText: String): ShoppingSessionListItem {
         val quantity = quantityUnit.toQuantityOrNull(quantityText)
@@ -120,15 +119,9 @@ internal data class ShoppingSessionListItem(
             return copy(quantityText = quantityText)
         }
 
-        val updatedMeasurement =
-            sessionItem.measurement.scaleToQuantityOrFallback(
-                previousQuantity = sessionItem.quantity,
-                updatedQuantity = quantity,
-            )
-
         return copy(
             quantityText = quantityText,
-            sessionItem = sessionItem.copy(quantity = quantity, measurement = updatedMeasurement),
+            sessionItem = sessionItem.copy(measurement = quantity),
         )
     }
 
@@ -139,7 +132,7 @@ internal data class ShoppingSessionListItem(
         ): ShoppingSessionListItem =
             ShoppingSessionListItem(
                 id = id,
-                quantityText = sessionItem.quantity.amount.formatClipZeros(),
+                quantityText = sessionItem.measurement.measurement.rawValue.formatClipZeros(),
                 sessionItem = sessionItem,
             )
     }
@@ -165,7 +158,7 @@ internal data class ShoppingSessionUiState(
     val totalCalories: Double
         get() = items.sumOf(ShoppingSessionListItem::totalCalories)
 
-    val pendingQuantityValue: StashQuantity?
+    val pendingQuantityValue: StashMeasurement?
         get() = selectedProduct?.toStashQuantityOrNull(pendingMeasurement)
 
     val canAddPendingProduct: Boolean
@@ -197,15 +190,18 @@ internal sealed interface ShoppingSessionEvent {
     data class Finished(val stashId: StashDefinitionId) : ShoppingSessionEvent
 }
 
-internal fun StashQuantityUnit.toQuantityOrNull(value: String): StashQuantity? {
+internal fun MeasurementType.toQuantityOrNull(value: String): StashMeasurement? {
     val amount = value.toDoubleOrNull() ?: return null
     if (amount <= 0.0) {
         return null
     }
 
     return when (this) {
-        StashQuantityUnit.Gram -> StashQuantity.grams(amount)
-        StashQuantityUnit.Milliliter -> StashQuantity.milliliters(amount)
-        StashQuantityUnit.Fraction -> null
+        MeasurementType.Gram -> StashMeasurement.grams(amount)
+        MeasurementType.Milliliter -> StashMeasurement.milliliters(amount)
+        MeasurementType.Package -> StashMeasurement.packages(amount)
+        MeasurementType.Serving -> StashMeasurement.servings(amount)
+        MeasurementType.Ounce -> StashMeasurement.ounces(amount)
+        MeasurementType.FluidOunce -> StashMeasurement.fluidOunces(amount)
     }
 }

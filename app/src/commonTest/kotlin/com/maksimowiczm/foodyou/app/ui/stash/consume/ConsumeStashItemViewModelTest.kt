@@ -1,6 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.stash.consume
 
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConsumeFromStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeMealRepository
@@ -30,7 +30,7 @@ class ConsumeStashItemViewModelTest {
             val stashRepository =
                 FakeStashRepository(
                     initialStashes = listOf(sampleStash()),
-                    initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(50.0))),
+                    initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(50.0))),
                 )
             val diaryRepository = FakeFoodDiaryEntryRepository()
             val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -66,14 +66,14 @@ class ConsumeStashItemViewModelTest {
 
             assertEquals(
                 ConsumeStashItemError.InsufficientQuantity(
-                    available = StashQuantity.grams(50.0),
-                    requested = StashQuantity.grams(100.0),
+                    available = StashMeasurement.grams(50.0),
+                    requested = StashMeasurement.grams(100.0),
                 ),
                 viewModel.state.value.error,
             )
             assertEquals(false, viewModel.state.value.isSaving)
             assertEquals(emptyList(), diaryRepository.allEntries())
-            assertEquals(StashQuantity.grams(50.0), stashRepository.allItems().single().quantity)
+            assertEquals(StashMeasurement.grams(50.0), stashRepository.allItems().single().measurement)
             assertEquals(emptyList(), events)
 
             stateJob.cancel()

@@ -2,6 +2,8 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
@@ -10,10 +12,9 @@ import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlin.math.abs
@@ -23,11 +24,11 @@ sealed interface AdjustStashItemQuantityError {
     data class ItemNotFound(val itemId: StashItemId) : AdjustStashItemQuantityError
 
     data class QuantityUnitMismatch(
-        val expected: StashQuantityUnit,
-        val actual: StashQuantityUnit,
+        val expected: MeasurementType,
+        val actual: MeasurementType,
     ) : AdjustStashItemQuantityError
 
-    data class QuantityBelowZero(val quantity: StashQuantity) : AdjustStashItemQuantityError
+    data class QuantityBelowZero(val measurement: StashMeasurement) : AdjustStashItemQuantityError
 }
 
 class AdjustStashItemQuantityUseCase(
@@ -39,7 +40,7 @@ class AdjustStashItemQuantityUseCase(
 ) {
     suspend fun adjust(
         itemId: StashItemId,
-        adjustment: StashQuantityAdjustment,
+        adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
     ): Result<StashItem, AdjustStashItemQuantityError> {
         val ownerId = stashOwnerProvider.current()
@@ -54,38 +55,38 @@ class AdjustStashItemQuantityUseCase(
                 )
             }
 
-            if (item.quantity.unit != adjustment.quantity.unit) {
+            if (item.measurement.type != adjustment.measurement.type) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
                     error =
                         AdjustStashItemQuantityError.QuantityUnitMismatch(
-                            expected = item.quantity.unit,
-                            actual = adjustment.quantity.unit,
+                            expected = item.measurement.type,
+                            actual = adjustment.measurement.type,
                         ),
-                    message = { "Cannot adjust stash item $itemId with mismatched units." },
+                    message = { "Cannot adjust stash item $itemId with mismatched measurement types." },
                 )
             }
 
-            val targetQuantity =
+            val targetMeasurement =
                 when (adjustment) {
-                    is StashQuantityAdjustment.ChangeBy -> item.quantity + adjustment.quantity
-                    is StashQuantityAdjustment.SetTo -> adjustment.quantity
+                    is StashMeasurementAdjustment.ChangeBy -> item.measurement + adjustment.measurement
+                    is StashMeasurementAdjustment.SetTo -> adjustment.measurement
                 }
-            if (targetQuantity.amount < -EPSILON) {
+            if (targetMeasurement.measurement.rawValue < -EPSILON) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
-                    error = AdjustStashItemQuantityError.QuantityBelowZero(targetQuantity),
+                    error = AdjustStashItemQuantityError.QuantityBelowZero(targetMeasurement),
                     message = { "Cannot adjust stash item $itemId below zero." },
                 )
             }
 
-            val normalizedTarget = targetQuantity.normalize()
-            if (normalizedTarget.isSameAmountAs(item.quantity)) {
+            val normalizedTarget = targetMeasurement.normalize()
+            if (normalizedTarget.isSameAmountAs(item.measurement)) {
                 return@withTransaction Ok(item)
             }
 
-            val updatedItem = item.copy(quantity = normalizedTarget)
-            if (updatedItem.quantity.amount <= EPSILON && updatedItem.canDeleteWhenEmpty()) {
+            val updatedItem = item.copy(measurement = normalizedTarget)
+            if (updatedItem.measurement.measurement.rawValue <= EPSILON && updatedItem.canDeleteWhenEmpty()) {
                 stashRepository.deleteItem(updatedItem.id)
             } else {
                 stashRepository.updateItem(updatedItem)
@@ -95,7 +96,7 @@ class AdjustStashItemQuantityUseCase(
                     stashId = item.stashId,
                     itemId = item.id,
                     operation = StashMovementOperation.ManualAdjust,
-                    quantityChange = normalizedTarget - item.quantity,
+                    measurementChange = normalizedTarget - item.measurement,
                     linkedDiaryEntryId = null,
                     createdAt = dateProvider.now(),
                     note = action.toMovementNote(),
@@ -105,10 +106,8 @@ class AdjustStashItemQuantityUseCase(
         }
     }
 
-    private fun StashQuantity.normalize(): StashQuantity = if (amount < EPSILON) copy(amount = 0.0) else this
-
-    private fun StashQuantity.isSameAmountAs(other: StashQuantity): Boolean =
-        unit == other.unit && abs(amount - other.amount) <= EPSILON
+    private fun StashMeasurement.isSameAmountAs(other: StashMeasurement): Boolean =
+        type == other.type && abs(measurement.rawValue - other.measurement.rawValue) <= EPSILON
 
     private fun StashItem.canDeleteWhenEmpty(): Boolean =
         when (val snapshot = snapshot) {

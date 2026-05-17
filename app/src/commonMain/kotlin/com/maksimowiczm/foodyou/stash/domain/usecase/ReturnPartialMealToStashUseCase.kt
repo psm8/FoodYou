@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
@@ -19,10 +20,10 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.entity.StashSnapshot
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
@@ -39,7 +40,7 @@ sealed interface ReturnPartialMealToStashError {
 
     data object NonPositiveQuantity : ReturnPartialMealToStashError
 
-    data object InvalidQuantityUnit : ReturnPartialMealToStashError
+    data object InvalidMeasurement : ReturnPartialMealToStashError
 
     data object QuantityExceedsEntry : ReturnPartialMealToStashError
 
@@ -61,16 +62,16 @@ class ReturnPartialMealToStashUseCase(
 ) {
     suspend fun returnToStash(
         entryId: FoodDiaryEntryId,
-        quantityToReturn: StashQuantity,
+        measurementToReturn: StashMeasurement,
         mealId: Long? = null,
         date: LocalDate? = null,
         stashId: StashDefinitionId? = null,
     ): Result<ReturnPartialMealToStashResult, ReturnPartialMealToStashError> {
-        if (quantityToReturn.amount <= 0.0) {
+        if (measurementToReturn.measurement.rawValue <= 0.0) {
             return logger.logAndReturnFailure(
                 tag = TAG,
                 error = ReturnPartialMealToStashError.NonPositiveQuantity,
-                message = { "Returned stash quantity must be greater than 0." },
+                message = { "Returned stash measurement must be greater than 0." },
             )
         }
 
@@ -84,26 +85,26 @@ class ReturnPartialMealToStashUseCase(
                 )
             }
 
-            val entryQuantity = entry.toStashQuantity()
-            if (quantityToReturn.unit != entryQuantity.unit) {
+            val entryMeasurement = entry.toStashMeasurement()
+            if (measurementToReturn.type != entryMeasurement.type) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
-                    error = ReturnPartialMealToStashError.InvalidQuantityUnit,
-                    message = { "Diary entry $entryId does not support stash quantity ${quantityToReturn.unit}." },
+                    error = ReturnPartialMealToStashError.InvalidMeasurement,
+                    message = { "Diary entry $entryId does not support stash measurement type ${measurementToReturn.type}." },
                 )
             }
 
-            if (entryQuantity.amount + EPSILON < quantityToReturn.amount) {
+            if (entryMeasurement.measurement.rawValue + EPSILON < measurementToReturn.measurement.rawValue) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
                     error = ReturnPartialMealToStashError.QuantityExceedsEntry,
-                    message = { "Cannot return ${quantityToReturn.amount}; diary entry only weighs ${entryQuantity.amount}." },
+                    message = { "Cannot return ${measurementToReturn.measurement.rawValue}; diary entry only weighs ${entryMeasurement.measurement.rawValue}." },
                 )
             }
 
             // Scale the existing measurement by ratio instead of subtracting raw grams so
             // serving/package-based diary entries keep the same semantic unit after the return.
-            val remainingRatio = (entryQuantity.amount - quantityToReturn.amount) / entryQuantity.amount
+            val remainingRatio = (entryMeasurement.measurement.rawValue - measurementToReturn.measurement.rawValue) / entryMeasurement.measurement.rawValue
             if (remainingRatio <= EPSILON) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
@@ -148,13 +149,13 @@ class ReturnPartialMealToStashUseCase(
             val snapshot =
                 buildReturnedSnapshot(
                     entry = entry,
-                    quantityToReturn = quantityToReturn,
+                    measurementToReturn = measurementToReturn,
                 )
             val returnedItem =
                 StashItem.new(
                     stashId = targetStash.id,
                     snapshot = snapshot,
-                    quantity = quantityToReturn,
+                    measurement = measurementToReturn,
                     createdAt = now,
                 )
             val itemId = stashRepository.insertItem(returnedItem)
@@ -163,7 +164,7 @@ class ReturnPartialMealToStashUseCase(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.ReturnToStash,
-                    quantityChange = quantityToReturn,
+                    measurementChange = measurementToReturn,
                     linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                     createdAt = now,
                 )
@@ -183,7 +184,7 @@ class ReturnPartialMealToStashUseCase(
 
     private suspend fun buildReturnedSnapshot(
         entry: FoodDiaryEntry,
-        quantityToReturn: StashQuantity,
+        measurementToReturn: StashMeasurement,
     ): StashSnapshot {
         // Prefer the original linked stash snapshot when history still points to it so leftovers keep
         // the same immutable product/recipe metadata as the consumed stock.
@@ -191,17 +192,17 @@ class ReturnPartialMealToStashUseCase(
         return when (linkedSnapshot) {
             is RawProductSnapshot ->
                 linkedSnapshot.copy(
-                    packageWeight = quantityToReturn.amount,
-                    servingWeight = linkedSnapshot.servingWeight?.coerceAtMost(quantityToReturn.amount),
+                    packageWeight = measurementToReturn.measurement.rawValue,
+                    servingWeight = linkedSnapshot.servingWeight?.coerceAtMost(measurementToReturn.measurement.rawValue),
                 )
 
             is AnonymousDishSnapshot ->
                 linkedSnapshot.copy(
-                    totalWeight = quantityToReturn.amount,
-                    totalAmount = quantityToReturn,
+                    totalWeight = measurementToReturn.measurement.rawValue,
+                    totalAmount = measurementToReturn.measurement,
                 )
 
-            null -> entry.food.toReturnedSnapshot(quantityToReturn)
+            null -> entry.food.toReturnedSnapshot(measurementToReturn)
         }
     }
 
@@ -211,7 +212,7 @@ class ReturnPartialMealToStashUseCase(
                 .getLinkedDiaryEntryMovements(LinkedDiaryEntryId(entryId.value))
                 .sortedWith(
                     compareBy<StashMovement> { movement ->
-                        if (movement.quantityChange.amount < 0.0) {
+                        if (movement.measurementChange.measurement.rawValue < 0.0) {
                             0
                         } else {
                             1
@@ -229,14 +230,14 @@ class ReturnPartialMealToStashUseCase(
         return null
     }
 
-    private fun FoodDiaryEntry.toStashQuantity(): StashQuantity =
+    private fun FoodDiaryEntry.toStashMeasurement(): StashMeasurement =
         if (food.isLiquid) {
-            StashQuantity.milliliters(weight)
+            StashMeasurement.milliliters(weight)
         } else {
-            StashQuantity.grams(weight)
+            StashMeasurement.grams(weight)
         }
 
-    private fun DiaryFood.toReturnedSnapshot(quantityToReturn: StashQuantity): StashSnapshot =
+    private fun DiaryFood.toReturnedSnapshot(measurementToReturn: StashMeasurement): StashSnapshot =
         when (this) {
             is DiaryFoodProduct ->
                 RawProductSnapshot(
@@ -246,8 +247,8 @@ class ReturnPartialMealToStashUseCase(
                     barcode = null,
                     note = note,
                     isLiquid = isLiquid,
-                    packageWeight = quantityToReturn.amount,
-                    servingWeight = servingWeight?.coerceAtMost(quantityToReturn.amount),
+                    packageWeight = measurementToReturn.measurement.rawValue,
+                    servingWeight = servingWeight?.coerceAtMost(measurementToReturn.measurement.rawValue),
                     source = source,
                     nutritionFacts = nutritionFacts,
                 )
@@ -258,8 +259,8 @@ class ReturnPartialMealToStashUseCase(
                     nutritionFacts = nutritionFacts,
                     note = note,
                     isLiquid = isLiquid,
-                    totalWeight = quantityToReturn.amount,
-                    totalAmount = quantityToReturn,
+                    totalWeight = measurementToReturn.measurement.rawValue,
+                    totalAmount = measurementToReturn.measurement,
                 )
         }
 

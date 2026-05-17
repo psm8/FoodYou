@@ -12,8 +12,8 @@ import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionId
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -73,8 +73,7 @@ class ShoppingSessionUseCaseTest {
         assertEquals(1, updated.items.size)
         assertEquals(250.0, updated.totalNutritionFacts.energy.value)
         assertEquals(FoodId.Product(1), updated.items.single().productId)
-        assertEquals(Measurement.Gram(250.0), updated.items.single().measurement)
-        assertEquals(StashQuantity.grams(250.0), updated.items.single().quantity)
+        assertEquals(StashMeasurement(Measurement.Gram(250.0)), updated.items.single().measurement)
     }
 
     @Test
@@ -109,8 +108,7 @@ class ShoppingSessionUseCaseTest {
             )
 
         assertEquals(1, merged.items.size)
-        assertEquals(Measurement.Package(1.5), merged.items.single().measurement)
-        assertEquals(StashQuantity.grams(1500.0), merged.items.single().quantity)
+        assertEquals(StashMeasurement(Measurement.Package(1.5)), merged.items.single().measurement)
         assertEquals(1500.0, merged.totalNutritionFacts.energy.value)
     }
 
@@ -196,13 +194,13 @@ class ShoppingSessionUseCaseTest {
         assertEquals(5, stashRepository.allMovements().size)
         assertEquals(
             listOf(
-                StashQuantity.grams(1500.0),
-                StashQuantity.grams(500.0),
-                StashQuantity.grams(250.0),
-                StashQuantity.grams(80.0),
-                StashQuantity.milliliters(750.0),
+                StashMeasurement(Measurement.Package(1.5)),
+                StashMeasurement(Measurement.Gram(500.0)),
+                StashMeasurement(Measurement.Serving(1.0)),
+                StashMeasurement(Measurement.Gram(80.0)),
+                StashMeasurement(Measurement.Package(0.75)),
             ),
-            stashRepository.allItems().map { it.quantity },
+            stashRepository.allItems().map { it.measurement },
         )
         assertEquals(
             List(5) { StashMovementOperation.Purchase },
@@ -239,15 +237,13 @@ class ShoppingSessionUseCaseTest {
                             id = ShoppingSessionItemId("session-item-1"),
                             productId = FoodId.Product(1),
                             snapshot = RawProductSnapshot.from(sampleProduct()),
-                            measurement = Measurement.Gram(200.0),
-                            quantity = StashQuantity.grams(200.0),
+                            measurement = StashMeasurement.grams(200.0),
                         ),
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("session-item-2"),
                             productId = FoodId.Product(2),
                             snapshot = RawProductSnapshot.from(sampleProduct(id = 2, name = "Yoghurt")),
-                            measurement = Measurement.Gram(150.0),
-                            quantity = StashQuantity.grams(150.0),
+                            measurement = StashMeasurement.grams(150.0),
                         ),
                     ),
             )

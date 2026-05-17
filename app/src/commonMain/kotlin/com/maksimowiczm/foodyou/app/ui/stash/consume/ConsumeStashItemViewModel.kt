@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
@@ -88,7 +89,7 @@ internal class ConsumeStashItemViewModel(
             val error = values[8] as ConsumeStashItemError?
             ConsumeStashItemState(
                 itemName = item?.snapshot?.name.orEmpty(),
-                remainingQuantity = item?.quantity,
+                remainingQuantity = item?.measurement,
                 amount = amount,
                 meals = meals.map { ConsumeStashItemMeal(id = it.id, name = it.name) },
                 selectedMealId = selectedMealId,
@@ -178,7 +179,7 @@ internal class ConsumeStashItemViewModel(
             }
 
             if (amount.value.isBlank()) {
-                amount.value = loadedItem.quantity.amount.formatClipZeros()
+                amount.value = loadedItem.measurement.measurement.rawValue.formatClipZeros()
             }
         }
     }
@@ -223,3 +224,4 @@ internal class ConsumeStashItemViewModel(
 internal sealed interface ConsumeStashItemEvent {
     data object Consumed : ConsumeStashItemEvent
 }
+

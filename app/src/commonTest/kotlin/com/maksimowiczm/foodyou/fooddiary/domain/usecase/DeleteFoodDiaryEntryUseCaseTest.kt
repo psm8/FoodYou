@@ -9,7 +9,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
@@ -29,8 +29,8 @@ class DeleteFoodDiaryEntryUseCaseTest {
     @Test
     fun when_entry_is_deleted_then_all_linked_stash_movements_are_reversed() = runBlocking {
         val product = sampleProduct()
-        val consumedItem = sampleRawProductItem(id = 1, quantity = StashQuantity.grams(0.0), product = product)
-        val returnedItem = sampleRawProductItem(id = 2, quantity = StashQuantity.grams(100.0), product = product)
+        val consumedItem = sampleRawProductItem(id = 1, measurement = StashMeasurement.grams(0.0), product = product)
+        val returnedItem = sampleRawProductItem(id = 2, measurement = StashMeasurement.grams(100.0), product = product)
         val entry = sampleFoodDiaryEntry(product = product, measurement = Measurement.Gram(400.0))
         val linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value)
         val stashRepository =
@@ -44,7 +44,7 @@ class DeleteFoodDiaryEntryUseCaseTest {
                             stashId = consumedItem.stashId,
                             itemId = consumedItem.id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-500.0),
+                            measurementChange = StashMeasurement.grams(-500.0),
                             linkedDiaryEntryId = linkedDiaryEntryId,
                             createdAt = FIXED_NOW,
                         ),
@@ -53,7 +53,7 @@ class DeleteFoodDiaryEntryUseCaseTest {
                             stashId = returnedItem.stashId,
                             itemId = returnedItem.id,
                             operation = StashMovementOperation.ReturnToStash,
-                            quantityChange = StashQuantity.grams(100.0),
+                            measurementChange = StashMeasurement.grams(100.0),
                             linkedDiaryEntryId = linkedDiaryEntryId,
                             createdAt = FIXED_NOW,
                         ),
@@ -79,19 +79,19 @@ class DeleteFoodDiaryEntryUseCaseTest {
         assertEquals(emptyList(), entryRepository.allEntries())
         assertEquals(
             listOf(
-                StashQuantity.grams(500.0),
-                StashQuantity.grams(0.0),
+                StashMeasurement.grams(500.0),
+                StashMeasurement.grams(0.0),
             ),
-            stashRepository.allItems().sortedBy { it.id.value }.map { it.quantity },
+            stashRepository.allItems().sortedBy { it.id.value }.map { it.measurement },
         )
         assertEquals(
             listOf(
-                StashQuantity.grams(-500.0),
-                StashQuantity.grams(100.0),
-                StashQuantity.grams(500.0),
-                StashQuantity.grams(-100.0),
+                StashMeasurement.grams(-500.0),
+                StashMeasurement.grams(100.0),
+                StashMeasurement.grams(500.0),
+                StashMeasurement.grams(-100.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange },
+            stashRepository.allMovements().map { it.measurementChange },
         )
         assertEquals(
             listOf(

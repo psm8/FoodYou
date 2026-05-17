@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
@@ -13,10 +14,10 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -49,10 +50,10 @@ class CreateAnonymousDishSnapshotUseCase(
     suspend fun create(
         recipeId: FoodId.Recipe,
         stashId: StashDefinitionId? = null,
-        totalAmount: StashQuantity,
+        totalAmount: StashMeasurement,
         servings: Int,
     ): Result<CreateAnonymousDishSnapshotResult, CreateAnonymousDishSnapshotError> {
-        if (totalAmount.amount <= 0.0) {
+        if (totalAmount.measurement.rawValue <= 0.0) {
             return logger.logAndReturnFailure(
                 tag = TAG,
                 error = CreateAnonymousDishSnapshotError.NonPositiveQuantity,
@@ -118,10 +119,10 @@ class CreateAnonymousDishSnapshotUseCase(
                     snapshot =
                         AnonymousDishSnapshot.from(
                             recipe = recipe,
-                            totalAmount = totalAmount,
+                            totalAmount = totalAmount.measurement,
                             servingsMade = servings,
                         ),
-                    quantity = totalAmount,
+                    measurement = totalAmount,
                     createdAt = now,
                 )
             val itemId = stashRepository.insertItem(item)
@@ -130,7 +131,7 @@ class CreateAnonymousDishSnapshotUseCase(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.CreateSnapshot,
-                    quantityChange = totalAmount,
+                    measurementChange = totalAmount,
                     linkedDiaryEntryId = null,
                     createdAt = now,
                 )
@@ -145,3 +146,4 @@ class CreateAnonymousDishSnapshotUseCase(
         const val DEFAULT_STASH_NAME = "Stash"
     }
 }
+

@@ -34,10 +34,10 @@ import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -363,8 +363,8 @@ private fun ManualAdjustDialog(
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val parsedQuantity = remember(dialog.amount, dialog.item.quantity.unit) {
-        dialog.item.quantity.unit.toQuantityOrNull(dialog.amount)
+    val parsedQuantity = remember(dialog.amount, dialog.item.quantity.type) {
+        dialog.item.quantity.type.toMeasurementOrNull(dialog.amount)
     }
     val canConfirm = parsedQuantity != null && dialog.reason.trim().isNotEmpty()
 
@@ -524,8 +524,8 @@ private fun StashBrowserItemType.badgeLabel(): String =
     }
 
 @Composable
-private fun StashQuantity.label(): String = displayLabel()
+private fun StashMeasurement.label(): String = displayLabel()
 
-private fun StashQuantityUnit.toQuantityOrNull(amountText: String): StashQuantity? {
+private fun MeasurementType.toMeasurementOrNull(amountText: String): StashMeasurement? {
     return amountText.toStashQuantityOrNull(unit = this, requirePositive = false)
 }

@@ -3,8 +3,8 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Error
 import com.maksimowiczm.foodyou.common.result.Result.Success
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -16,7 +16,7 @@ class ConsumeFromStashUseCaseTest {
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
-                initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(500.0))),
+                initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(500.0))),
             )
         val diaryRepository = FakeFoodDiaryEntryRepository()
         val useCase =
@@ -33,32 +33,35 @@ class ConsumeFromStashUseCaseTest {
             useCase.consume(
                 itemId = sampleRawProductItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(200.0),
+                amountEaten = StashMeasurement.grams(200.0),
             )
 
         val success =
             assertIs<Success<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result)
         assertEquals(1L, success.data.value)
-        assertEquals(StashQuantity.grams(300.0), stashRepository.allItems().single().quantity)
+        assertEquals(StashMeasurement.grams(300.0), stashRepository.allItems().single().measurement)
         assertEquals(
             Measurement.Gram(200.0),
             diaryRepository.allEntries().single().measurement,
         )
         assertEquals(StashMovementOperation.DirectConsume, stashRepository.allMovements().single().operation)
-        assertEquals(StashQuantity.grams(-200.0), stashRepository.allMovements().single().quantityChange)
+        assertEquals(StashMeasurement.grams(-200.0), stashRepository.allMovements().single().measurementChange)
     }
 
     @Test
     fun when_consuming_dish_by_weight_equivalent_then_fraction_quantity_is_subtracted() = runBlocking {
+        // 3-serving dish, totalWeight = 450g (150g per serving), 2 servings available in stash
+        val recipe = sampleRecipe(id = 1L, name = "Pasta", servings = 3, totalWeight = 450.0, isLiquid = false)
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
                 initialItems =
                     listOf(
                         sampleAnonymousDishItem(
-                            quantity = StashQuantity.fraction(2.0),
-                            totalAmount = StashQuantity.fraction(2.0),
-                            servingsMade = 8,
+                            measurement = StashMeasurement.servings(2.0),
+                            recipe = recipe,
+                            totalAmount = Measurement.Serving(3.0),
+                            servingsMade = 3,
                         )
                     ),
             )
@@ -73,22 +76,25 @@ class ConsumeFromStashUseCaseTest {
                 logger = NoOpLogger,
             )
 
+        // Eating 150g from a 3-serving dish (450g total).
+        // servingsConsumed = 150 / 450 * 3.0 = 1.0
+        // remaining = 2.0 - 1.0 = 1.0 servings
         val result =
             useCase.consume(
                 itemId = sampleAnonymousDishItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(200.0),
+                amountEaten = StashMeasurement.grams(150.0),
             )
 
         val success =
             assertIs<Success<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result)
         assertEquals(1L, success.data.value)
-        assertEquals(StashQuantity.fraction(1.5), stashRepository.allItems().single().quantity)
+        assertEquals(StashMeasurement.servings(1.0), stashRepository.allItems().single().measurement)
         assertEquals(
-            Measurement.Gram(200.0),
+            Measurement.Gram(150.0),
             diaryRepository.allEntries().single().measurement,
         )
-        assertEquals(StashQuantity.fraction(-0.5), stashRepository.allMovements().single().quantityChange)
+        assertEquals(StashMeasurement.servings(-1.0), stashRepository.allMovements().single().measurementChange)
     }
 
     @Test
@@ -98,7 +104,7 @@ class ConsumeFromStashUseCaseTest {
                 stashRepository =
                     FakeStashRepository(
                         initialStashes = listOf(sampleStash()),
-                        initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(100.0))),
+                        initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(100.0))),
                     ),
                 entryRepository = FakeFoodDiaryEntryRepository(),
                 mealRepository = FakeMealRepository(listOf(sampleMeal())),
@@ -111,13 +117,13 @@ class ConsumeFromStashUseCaseTest {
             useCase.consume(
                 itemId = sampleRawProductItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(250.0),
+                amountEaten = StashMeasurement.grams(250.0),
             )
 
         assertEquals(
             ConsumeFromStashError.InsufficientQuantity(
-                available = StashQuantity.grams(100.0),
-                requested = StashQuantity.grams(250.0),
+                available = StashMeasurement.grams(100.0),
+                requested = StashMeasurement.grams(250.0),
             ),
             assertIs<Error<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result).error,
         )
@@ -128,7 +134,7 @@ class ConsumeFromStashUseCaseTest {
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
-                initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(100.0))),
+                initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(100.0))),
             )
         val useCase =
             ConsumeFromStashUseCase(
@@ -144,11 +150,12 @@ class ConsumeFromStashUseCaseTest {
             useCase.consume(
                 itemId = sampleRawProductItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(100.0),
+                amountEaten = StashMeasurement.grams(100.0),
             )
 
         assertIs<Success<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result)
-        assertEquals(listOf(StashQuantity.grams(0.0)), stashRepository.allItems().map { it.quantity })
+        // Raw product with productId != null → canDeleteWhenEmpty() returns false, so item is kept
+        assertEquals(listOf(StashMeasurement.grams(0.0)), stashRepository.allItems().map { it.measurement })
     }
 
     @Test
@@ -158,7 +165,7 @@ class ConsumeFromStashUseCaseTest {
                 stashRepository =
                     FakeStashRepository(
                         initialStashes = listOf(sampleStash()),
-                        initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(50.0))),
+                        initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(50.0))),
                     ),
                 entryRepository = FakeFoodDiaryEntryRepository(),
                 mealRepository = FakeMealRepository(listOf(sampleMeal())),
@@ -171,13 +178,13 @@ class ConsumeFromStashUseCaseTest {
             useCase.consume(
                 itemId = sampleRawProductItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(100.0),
+                amountEaten = StashMeasurement.grams(100.0),
             )
 
         assertEquals(
             ConsumeFromStashError.InsufficientQuantity(
-                available = StashQuantity.grams(50.0),
-                requested = StashQuantity.grams(100.0),
+                available = StashMeasurement.grams(50.0),
+                requested = StashMeasurement.grams(100.0),
             ),
             assertIs<Error<com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId, ConsumeFromStashError>>(result).error,
         )
@@ -188,7 +195,7 @@ class ConsumeFromStashUseCaseTest {
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
-                initialItems = listOf(sampleRawProductItem(quantity = StashQuantity.grams(500.0))),
+                initialItems = listOf(sampleRawProductItem(measurement = StashMeasurement.grams(500.0))),
                 failOnMovementInsertAttempt = 1,
             )
         val diaryRepository = FakeFoodDiaryEntryRepository()
@@ -206,11 +213,11 @@ class ConsumeFromStashUseCaseTest {
             useCase.consume(
                 itemId = sampleRawProductItem().id,
                 mealId = sampleMeal().id,
-                amountEaten = StashQuantity.grams(200.0),
+                amountEaten = StashMeasurement.grams(200.0),
             )
         }
 
-        assertEquals(listOf(StashQuantity.grams(500.0)), stashRepository.allItems().map { it.quantity })
+        assertEquals(listOf(StashMeasurement.grams(500.0)), stashRepository.allItems().map { it.measurement })
         assertEquals(emptyList(), diaryRepository.allEntries())
     }
 }

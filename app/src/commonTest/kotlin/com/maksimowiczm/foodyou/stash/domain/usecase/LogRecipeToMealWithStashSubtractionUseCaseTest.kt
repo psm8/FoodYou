@@ -4,7 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -35,11 +35,11 @@ class LogRecipeToMealWithStashSubtractionUseCaseTest {
                 initialStashes = listOf(sampleStash()),
                 initialItems =
                     listOf(
-                        sampleRawProductItem(id = 1, quantity = StashQuantity.grams(300.0), product = flour),
-                        sampleRawProductItem(id = 2, quantity = StashQuantity.grams(150.0), product = cheese),
+                        sampleRawProductItem(id = 1, measurement = StashMeasurement.grams(300.0), product = flour),
+                        sampleRawProductItem(id = 2, measurement = StashMeasurement.grams(150.0), product = cheese),
                         sampleRawProductItem(
                             id = 3,
-                            quantity = StashQuantity.milliliters(100.0),
+                            measurement = StashMeasurement.milliliters(100.0),
                             product = tomatoSauce,
                         ),
                     ),
@@ -74,19 +74,19 @@ class LogRecipeToMealWithStashSubtractionUseCaseTest {
         assertEquals(true, success.data.availability.areAllIngredientsAvailable)
         assertEquals(
             listOf(
-                StashQuantity.grams(200.0),
-                StashQuantity.grams(100.0),
-                StashQuantity.milliliters(80.0),
+                StashMeasurement.grams(200.0),
+                StashMeasurement.grams(100.0),
+                StashMeasurement.milliliters(80.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange.negate() },
+            stashRepository.allMovements().map { it.measurementChange.negate() },
         )
         assertEquals(
             listOf(
-                StashQuantity.grams(100.0),
-                StashQuantity.grams(50.0),
-                StashQuantity.milliliters(20.0),
+                StashMeasurement.grams(100.0),
+                StashMeasurement.grams(50.0),
+                StashMeasurement.milliliters(20.0),
             ),
-            stashRepository.allItems().sortedBy { it.id.value }.map { it.quantity },
+            stashRepository.allItems().sortedBy { it.id.value }.map { it.measurement },
         )
         assertEquals("Pizza", diaryRepository.allEntries().single().food.name)
     }

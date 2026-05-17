@@ -6,7 +6,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.nutritionWithEnergy
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleProduct
 import kotlin.test.Test
@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 class ShoppingSessionStateTest {
     @Test
-    fun `when stash product and quantity are selected, add is enabled`() {
+    fun `when stash product and measurement are selected, add is enabled`() {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
@@ -40,8 +40,8 @@ class ShoppingSessionStateTest {
                 selectedStashId = StashDefinitionId(1L),
                 items =
                     listOf(
-                        previewItem(id = "1", energy = 60.0, quantity = 200.0),
-                        previewItem(id = "2", energy = 130.0, quantity = 500.0),
+                        previewItem(id = "1", energy = 60.0, measurementRawValue = 200.0),
+                        previewItem(id = "2", energy = 130.0, measurementRawValue = 500.0),
                     ),
             )
 
@@ -50,7 +50,7 @@ class ShoppingSessionStateTest {
     }
 
     @Test
-    fun `when quantity is invalid, add stays disabled`() {
+    fun `when measurement is invalid, add stays disabled`() {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
@@ -65,7 +65,7 @@ class ShoppingSessionStateTest {
     }
 
     @Test
-    fun `when preview item quantity is invalid, confirm stays disabled`() {
+    fun `when preview item measurement is invalid, confirm stays disabled`() {
         val state =
             ShoppingSessionUiState(
                 isLoading = false,
@@ -74,7 +74,7 @@ class ShoppingSessionStateTest {
                 selectedStashId = StashDefinitionId(1L),
                 items =
                     listOf(
-                        previewItem(id = "1", energy = 60.0, quantity = 200.0)
+                        previewItem(id = "1", energy = 60.0, measurementRawValue = 200.0)
                             .updateQuantity("oops")
                     ),
             )
@@ -83,7 +83,7 @@ class ShoppingSessionStateTest {
     }
 
     @Test
-    fun `when editing package quantity, the original measurement type is preserved`() {
+    fun `when editing package measurement, the original measurement type is preserved`() {
         val updated =
             ShoppingSessionListItem.from(
                     id = ShoppingSessionListItemId("1"),
@@ -93,14 +93,13 @@ class ShoppingSessionStateTest {
                             productId = sampleProduct().id,
                             snapshot =
                                 RawProductSnapshot.from(sampleProduct(packageWeight = 1000.0)),
-                            measurement = Measurement.Package(1.5),
-                            quantity = StashQuantity.grams(1500.0),
+                            measurement = StashMeasurement(Measurement.Package(1.5)),
                         ),
                 )
                 .updateQuantity("750")
 
         assertEquals(Measurement.Package(0.75), updated.measurement)
-        assertEquals(StashQuantity.grams(750.0), updated.sessionItem.quantity)
+        assertEquals(StashMeasurement(Measurement.Package(750.0)), updated.sessionItem.measurement)
     }
 
     private fun selectedProduct(): ShoppingSessionSelectedProduct =
@@ -116,7 +115,7 @@ class ShoppingSessionStateTest {
             )
         )
 
-    private fun previewItem(id: String, energy: Double, quantity: Double): ShoppingSessionListItem =
+    private fun previewItem(id: String, energy: Double, measurementRawValue: Double): ShoppingSessionListItem =
         ShoppingSessionListItem.from(
             id = ShoppingSessionListItemId(id),
             sessionItem =
@@ -127,8 +126,7 @@ class ShoppingSessionStateTest {
                         RawProductSnapshot.from(
                             sampleProduct(nutritionFacts = nutritionWithEnergy(energy))
                         ),
-                    measurement = Measurement.Gram(quantity),
-                    quantity = StashQuantity.grams(quantity),
+                    measurement = StashMeasurement(Measurement.Gram(measurementRawValue)),
                 ),
         )
 }

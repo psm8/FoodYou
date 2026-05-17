@@ -1,13 +1,15 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 
 enum class IngredientAvailabilityStatus {
     Available,
@@ -23,23 +25,23 @@ enum class StashSubtractionMode {
 
 data class IngredientStashAllocation(
     val item: StashItem,
-    val quantity: StashQuantity,
+    val measurement: StashMeasurement,
 )
 
 data class RecipeIngredientStashAvailability(
     val productId: FoodId.Product,
     val productName: String,
-    val requiredQuantity: StashQuantity,
+    val requiredMeasurement: StashMeasurement,
     val allocations: List<IngredientStashAllocation>,
 ) {
-    val availableQuantity: StashQuantity =
-        allocations.fold(requiredQuantity.zero()) { acc, allocation -> acc + allocation.quantity }
+    val availableMeasurement: StashMeasurement =
+        allocations.fold(requiredMeasurement.zero()) { acc, allocation -> acc + allocation.measurement }
 
     val status: IngredientAvailabilityStatus
         get() =
             when {
-                availableQuantity.amount <= EPSILON -> IngredientAvailabilityStatus.Unavailable
-                availableQuantity.amount + EPSILON >= requiredQuantity.amount ->
+                availableMeasurement.measurement.rawValue <= EPSILON -> IngredientAvailabilityStatus.Unavailable
+                availableMeasurement.measurement.rawValue + EPSILON >= requiredMeasurement.measurement.rawValue ->
                     IngredientAvailabilityStatus.Available
 
                 else -> IngredientAvailabilityStatus.PartiallyAvailable
@@ -74,7 +76,7 @@ data class RecipeStashAvailability(
 internal data class ProductRequirement(
     val productId: FoodId.Product,
     val productName: String,
-    val quantity: StashQuantity,
+    val measurement: StashMeasurement,
 )
 
 internal fun Recipe.toProductRequirements(measurement: Measurement): List<ProductRequirement> {
@@ -85,15 +87,15 @@ internal fun Recipe.toProductRequirements(measurement: Measurement): List<Produc
 private fun Recipe.toProductRequirements(consumedWeight: Double): List<ProductRequirement> =
     unpack(consumedWeight)
         .flatMap(RecipeIngredient::toProductRequirements)
-        .groupBy { requirement -> requirement.productId to requirement.quantity.unit }
+        .groupBy { requirement -> requirement.productId to requirement.measurement.type }
         .map { (key, requirements) ->
-            val quantity = requirements.fold(requirements.first().quantity.zero()) { acc, requirement ->
-                acc + requirement.quantity
+            val measurement = requirements.fold(requirements.first().measurement.zero()) { acc, requirement ->
+                acc + requirement.measurement
             }
             ProductRequirement(
                 productId = key.first,
                 productName = requirements.first().productName,
-                quantity = quantity,
+                measurement = measurement,
             )
         }
 
@@ -105,7 +107,7 @@ private fun RecipeIngredient.toProductRequirements(): List<ProductRequirement> {
                 ProductRequirement(
                     productId = ingredientFood.id,
                     productName = ingredientFood.headline,
-                    quantity = ingredientFood.toStashQuantity(ingredientWeight),
+                    measurement = ingredientFood.toStashMeasurement(ingredientWeight),
                 )
             )
 
@@ -145,41 +147,47 @@ internal fun buildRecipeStashAvailability(
 private fun ProductRequirement.toAvailability(
     candidateItems: List<StashItem>,
 ): RecipeIngredientStashAvailability {
-    var remainingAmount = quantity.amount
+    var remainingRawValue = measurement.measurement.rawValue
     val allocations = mutableListOf<IngredientStashAllocation>()
 
     candidateItems
-        .filter { item -> item.quantity.unit == quantity.unit }
+        .filter { item -> item.measurement.type == measurement.type }
         .sortedBy(StashItem::createdAt)
         .forEach { item ->
-            if (remainingAmount <= EPSILON) {
+            if (remainingRawValue <= EPSILON) {
                 return@forEach
             }
 
-            val allocatedAmount = minOf(item.quantity.amount, remainingAmount)
-            if (allocatedAmount <= EPSILON) {
+            val allocatedRawValue = minOf(item.measurement.measurement.rawValue, remainingRawValue)
+            if (allocatedRawValue <= EPSILON) {
                 return@forEach
             }
 
-            allocations += IngredientStashAllocation(item = item, quantity = quantity.copy(amount = allocatedAmount))
-            remainingAmount -= allocatedAmount
+            allocations +=
+                IngredientStashAllocation(
+                    item = item,
+                    measurement = StashMeasurement(Measurement.from(measurement.type, allocatedRawValue)),
+                )
+            remainingRawValue -= allocatedRawValue
         }
 
     return RecipeIngredientStashAvailability(
         productId = productId,
         productName = productName,
-        requiredQuantity = quantity,
+        requiredMeasurement = measurement,
         allocations = allocations,
     )
 }
 
-private fun Product.toStashQuantity(weight: Double): StashQuantity =
+private fun Product.toStashMeasurement(weight: Double): StashMeasurement =
     if (isLiquid) {
-        StashQuantity.milliliters(weight)
+        StashMeasurement.milliliters(weight)
     } else {
-        StashQuantity.grams(weight)
+        StashMeasurement.grams(weight)
     }
 
-private fun StashQuantity.zero(): StashQuantity = copy(amount = 0.0)
+private fun StashMeasurement.zero(): StashMeasurement =
+    StashMeasurement(Measurement.from(type, 0.0))
 
 private const val EPSILON = 0.000001
+

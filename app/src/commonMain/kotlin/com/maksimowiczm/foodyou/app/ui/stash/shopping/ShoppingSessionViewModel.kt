@@ -320,8 +320,7 @@ internal class ShoppingSessionViewModel(
     private fun AddToShoppingSessionError.toUiError(): ShoppingSessionUiError =
         when (this) {
             is AddToShoppingSessionError.ProductNotFound -> ShoppingSessionUiError.AddFailed
-            AddToShoppingSessionError.NonPositiveQuantity -> ShoppingSessionUiError.InvalidQuantity
-            AddToShoppingSessionError.InvalidQuantityUnit -> ShoppingSessionUiError.InvalidQuantity
+            AddToShoppingSessionError.UnsupportedMeasurement -> ShoppingSessionUiError.InvalidQuantity
         }
 
     private data class ShoppingSessionHeader(

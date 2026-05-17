@@ -4,7 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddToShoppingSessionUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConfirmShoppingSessionUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeProductRepository
@@ -120,10 +120,10 @@ class ShoppingSessionViewModelTest {
             assertEquals(StashDefinitionId(9L), finished.stashId)
             assertEquals(2, stashRepository.allItems().size)
             assertEquals(2, stashRepository.allMovements().size)
-            assertEquals(StashQuantity.grams(1500.0), stashRepository.allItems().first().quantity)
+            assertEquals(StashMeasurement.packages(1.5), stashRepository.allItems().first().measurement)
             assertEquals(
-                StashQuantity.milliliters(400.0),
-                stashRepository.allItems().last().quantity,
+                StashMeasurement(Measurement.Package(0.4)),
+                stashRepository.allItems().last().measurement,
             )
             assertEquals(emptyList(), viewModel.state.value.items)
             assertEquals(0.0, viewModel.state.value.totalCalories)
@@ -157,7 +157,7 @@ class ShoppingSessionViewModelTest {
             awaitState(viewModel) { !it.isConfirming && it.items.isEmpty() }
 
             assertIs<ShoppingSessionEvent.Finished>(event.await())
-            assertEquals(StashQuantity.grams(300.0), stashRepository.allItems().single().quantity)
+            assertEquals(StashMeasurement.grams(300.0), stashRepository.allItems().single().measurement)
         }
 
     @Test
@@ -187,7 +187,7 @@ class ShoppingSessionViewModelTest {
             awaitState(viewModel) { !it.isConfirming && it.items.isEmpty() }
 
             assertIs<ShoppingSessionEvent.Finished>(event.await())
-            assertEquals(StashQuantity.grams(750.0), stashRepository.allItems().single().quantity)
+            assertEquals(StashMeasurement.packages(0.75), stashRepository.allItems().single().measurement)
         }
 
     @Test

@@ -1,9 +1,9 @@
 package com.maksimowiczm.foodyou.app.ui.home.stash
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeRecipeRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
@@ -93,7 +93,7 @@ class HomeStashRecipeSnapshotViewModelTest {
         yield()
 
         val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(StashQuantity.fraction(2.0), createdSnapshot.totalAmount)
+        assertEquals(Measurement.Serving(2.0), createdSnapshot.totalAmount)
         assertEquals(sampleRecipe().totalWeight, createdSnapshot.totalWeight)
         assertEquals(null, viewModel.state.value.error)
     }
@@ -104,15 +104,15 @@ class HomeStashRecipeSnapshotViewModelTest {
         val viewModel = snapshotViewModel(stashRepository = stashRepository)
 
         yield()
-        viewModel.selectAmountUnit(StashQuantityUnit.Gram)
+        viewModel.selectAmountUnit(MeasurementType.Gram)
         viewModel.updateTotalAmount("250")
         viewModel.save()
         yield()
 
         val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(StashQuantity.grams(250.0), createdSnapshot.totalAmount)
+        assertEquals(Measurement.Gram(250.0), createdSnapshot.totalAmount)
         assertEquals(250.0, createdSnapshot.totalWeight)
-        assertEquals(StashQuantityUnit.Gram, viewModel.state.value.amountUnit)
+        assertEquals(MeasurementType.Gram, viewModel.state.value.amountUnit)
     }
 
     @Test
@@ -125,15 +125,15 @@ class HomeStashRecipeSnapshotViewModelTest {
             )
 
         yield()
-        viewModel.selectAmountUnit(StashQuantityUnit.Milliliter)
+        viewModel.selectAmountUnit(MeasurementType.Milliliter)
         viewModel.updateTotalAmount("500")
         viewModel.save()
         yield()
 
         val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(StashQuantity.milliliters(500.0), createdSnapshot.totalAmount)
+        assertEquals(Measurement.Milliliter(500.0), createdSnapshot.totalAmount)
         assertEquals(500.0, createdSnapshot.totalWeight)
-        assertEquals(StashQuantityUnit.Milliliter, viewModel.state.value.amountUnit)
+        assertEquals(MeasurementType.Milliliter, viewModel.state.value.amountUnit)
     }
 
     private fun snapshotViewModel(

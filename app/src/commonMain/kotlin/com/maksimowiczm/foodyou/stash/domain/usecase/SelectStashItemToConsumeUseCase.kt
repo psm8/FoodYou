@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
@@ -22,7 +23,7 @@ class SelectStashItemToConsumeUseCase(
     ): Flow<List<StashItem>> =
         stashRepository.observeStashContents(stashId).map { items ->
             items.filter { item ->
-                item.quantity.amount > 0.0 &&
+                item.measurement.measurement.rawValue > 0.0 &&
                     when (type) {
                         null -> true
                         ConsumableStashItemType.RawProduct -> item.snapshot is RawProductSnapshot

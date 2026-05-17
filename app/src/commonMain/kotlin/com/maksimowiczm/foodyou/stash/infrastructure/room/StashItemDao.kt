@@ -15,7 +15,7 @@ abstract class StashItemDao {
         SELECT *
         FROM StashItem
         WHERE stashId = :stashId
-          AND quantity > 0
+          AND rawValue > 0
         ORDER BY createdAtEpochSeconds DESC, id DESC
         """
     )

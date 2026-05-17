@@ -1,7 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.home.stash
 
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummary
 import com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummaryItem
 import com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummaryStash
@@ -37,7 +37,7 @@ class HomeStashCardUiStateTest {
                                 name = "Soup",
                                 stashId = StashDefinitionId(2L),
                                 stashName = "Pantry",
-                                quantity = StashQuantity.grams(300.0),
+                                measurement = StashMeasurement.grams(300.0),
                                 createdAt = LocalDateTime(2025, 1, 3, 10, 0),
                             ),
                             HomeStashSummaryItem(
@@ -45,7 +45,7 @@ class HomeStashCardUiStateTest {
                                 name = "Yogurt",
                                 stashId = StashDefinitionId(1L),
                                 stashName = "Fridge",
-                                quantity = StashQuantity.grams(150.0),
+                                measurement = StashMeasurement.grams(150.0),
                                 createdAt = LocalDateTime(2025, 1, 2, 10, 0),
                             ),
                         ),

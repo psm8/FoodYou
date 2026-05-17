@@ -1,11 +1,12 @@
 package com.maksimowiczm.foodyou.app.ui.stash.browser
 
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import kotlinx.datetime.LocalDateTime
 
@@ -31,7 +32,7 @@ internal enum class StashBrowserItemType {
 internal data class StashBrowserItem(
     val id: StashItemId,
     val name: String,
-    val quantity: StashQuantity,
+    val quantity: StashMeasurement,
     val createdAt: LocalDateTime,
     val stashName: String,
     val type: StashBrowserItemType,
@@ -41,7 +42,7 @@ internal data class StashBrowserItem(
             StashBrowserItem(
                 id = item.id,
                 name = item.snapshot.name,
-                quantity = item.quantity,
+                quantity = item.measurement,
                 createdAt = item.createdAt,
                 stashName = stashName,
                 type =
@@ -129,7 +130,7 @@ internal data class StashBrowserState(
     fun showRemoveDialog(item: StashBrowserItem): StashBrowserState = copy(actionDialog = StashBrowserActionDialog.Remove(item))
 
     fun showManualAdjustDialog(item: StashBrowserItem): StashBrowserState =
-        copy(actionDialog = StashBrowserActionDialog.ManualAdjust(item = item, amount = item.quantity.amount.toString()))
+        copy(actionDialog = StashBrowserActionDialog.ManualAdjust(item = item, amount = item.quantity.measurement.rawValue.toString()))
 
     fun showMoveDialog(item: StashBrowserItem): StashBrowserState =
         copy(actionDialog = StashBrowserActionDialog.Move(item = item, targetStashId = moveTargets.firstOrNull()?.id))
@@ -195,13 +196,13 @@ internal val StashBrowserSortOption.comparator: Comparator<StashBrowserItem>
                     .thenByDescending { it.id.value }
 
             StashBrowserSortOption.QuantityDescending ->
-                compareByDescending<StashBrowserItem> { it.quantity.amount }
+                compareByDescending<StashBrowserItem> { it.quantity.measurement.rawValue }
                     .thenBy { it.name.lowercase() }
                     .thenByDescending { it.createdAt }
                     .thenByDescending { it.id.value }
 
             StashBrowserSortOption.QuantityAscending ->
-                compareBy<StashBrowserItem> { it.quantity.amount }
+                compareBy<StashBrowserItem> { it.quantity.measurement.rawValue }
                     .thenBy { it.name.lowercase() }
                     .thenByDescending { it.createdAt }
                     .thenByDescending { it.id.value }
@@ -213,3 +214,4 @@ private inline fun <reified T : StashBrowserActionDialog> StashBrowserActionDial
 }
 
 private fun String.normalizedOrDefault(default: String): String = trim().ifEmpty { default }
+

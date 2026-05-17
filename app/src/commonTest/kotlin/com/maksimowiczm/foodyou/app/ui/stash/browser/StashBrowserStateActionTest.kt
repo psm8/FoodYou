@@ -1,7 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
 import kotlin.test.Test
@@ -21,7 +21,7 @@ class StashBrowserStateActionTest {
 
     @Test
     fun `when starting manual adjust action, it pre-fills the amount from the item`() {
-        val item = browserItem(id = 1L, quantity = StashQuantity.grams(250.0))
+        val item = browserItem(id = 1L, quantity = StashMeasurement.grams(250.0))
 
         val state = browserState().showManualAdjustDialog(item)
 
@@ -76,7 +76,7 @@ class StashBrowserStateActionTest {
     private fun browserItem(
         id: Long = 1L,
         name: String = "Item",
-        quantity: StashQuantity = StashQuantity.grams(1.0),
+        quantity: StashMeasurement = StashMeasurement.grams(1.0),
     ) =
         StashBrowserItem(
             id = com.maksimowiczm.foodyou.stash.domain.entity.StashItemId(id),

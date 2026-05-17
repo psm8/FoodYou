@@ -69,7 +69,7 @@ class ObserveHomeStashSummaryUseCaseTest {
                     listOf(
                         listOf(
                             sampleRawProductItem(id = 1L, stashId = fridge.id.value).copy(
-                                quantity = com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity.grams(0.0),
+                                measurement = com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement.grams(0.0),
                                 createdAt = LocalDateTime(2025, 1, 1, 8, 0),
                             ),
                             sampleRawProductItem(id = 2L, stashId = fridge.id.value).copy(

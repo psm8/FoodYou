@@ -28,7 +28,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.stash.displayLabel
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
 import foodyou.app.generated.resources.action_quick_add
@@ -139,4 +139,4 @@ internal fun HomeStashCard(
     }
 }
 
-@Composable private fun StashQuantity.formatForHomeCard(): String = displayLabel()
+@Composable private fun StashMeasurement.formatForHomeCard(): String = displayLabel()

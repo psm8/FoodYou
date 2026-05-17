@@ -6,7 +6,6 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeRecipeRepository
@@ -73,7 +72,7 @@ class StashAddRecipeSnapshotIntegrationTest {
 
         val storedSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
         assertEquals(stashId, stashRepository.allItems().single().stashId)
-        assertEquals(StashQuantity.fraction(2.0), storedSnapshot.totalAmount)
+        assertEquals(Measurement.Serving(2.0), storedSnapshot.totalAmount)
         assertEquals(800.0, storedSnapshot.totalWeight)
         assertEquals(emptyList<FoodDiaryEntry>(), diaryRepository.allEntries())
 
@@ -83,7 +82,7 @@ class StashAddRecipeSnapshotIntegrationTest {
 
         val persistedSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
         assertEquals("Pizza", persistedSnapshot.name)
-        assertEquals(StashQuantity.fraction(2.0), persistedSnapshot.totalAmount)
+        assertEquals(Measurement.Serving(2.0), persistedSnapshot.totalAmount)
         assertEquals(800.0, persistedSnapshot.totalWeight)
         assertEquals(storedSnapshot.nutritionFacts, persistedSnapshot.nutritionFacts)
     }

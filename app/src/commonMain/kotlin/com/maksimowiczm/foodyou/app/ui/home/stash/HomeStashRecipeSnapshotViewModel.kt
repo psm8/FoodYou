@@ -5,14 +5,14 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotError
@@ -40,7 +40,7 @@ internal class HomeStashRecipeSnapshotViewModel(
     private val ownerId = stashOwnerProvider.current()
     private val totalAmount = MutableStateFlow("")
     private val servingsMade = MutableStateFlow("")
-    private val amountUnit = MutableStateFlow(StashQuantityUnit.Fraction)
+    private val amountUnit = MutableStateFlow(MeasurementType.Serving)
     private val selectedStashId = MutableStateFlow(preferredStashId)
     private val error = MutableStateFlow<HomeStashRecipeSnapshotError?>(null)
     private val eventBus = Channel<HomeStashRecipeSnapshotEvent>()
@@ -76,7 +76,7 @@ internal class HomeStashRecipeSnapshotViewModel(
                         stashes.size == 1 -> stashes.single().id
                         else -> null
                     }
-                val availableUnits = recipe?.supportedAmountUnits() ?: listOf(StashQuantityUnit.Fraction)
+                val availableUnits = recipe?.supportedAmountUnits() ?: listOf(MeasurementType.Serving)
                 val resolvedAmountUnit =
                     formInputs.amountUnit.takeIf(availableUnits::contains) ?: availableUnits.first()
                 val resolvedServingsMade =
@@ -87,7 +87,7 @@ internal class HomeStashRecipeSnapshotViewModel(
                     if (recipe != null && parsedQuantity != null && parsedServings != null) {
                         AnonymousDishSnapshot.from(
                             recipe = recipe,
-                            totalAmount = parsedQuantity,
+                            totalAmount = parsedQuantity.measurement,
                             servingsMade = parsedServings,
                         )
                     } else {
@@ -134,7 +134,7 @@ internal class HomeStashRecipeSnapshotViewModel(
         clearRecoverableError(HomeStashRecipeSnapshotError.InvalidServings)
     }
 
-    fun selectAmountUnit(unit: StashQuantityUnit) {
+    fun selectAmountUnit(unit: MeasurementType) {
         amountUnit.value = unit
         clearRecoverableError(HomeStashRecipeSnapshotError.InvalidAmount)
     }
@@ -215,8 +215,8 @@ internal data class HomeStashRecipeSnapshotState(
     val isRecipeMissing: Boolean = false,
     val totalAmount: String = "",
     val servingsMade: String = "",
-    val amountUnit: StashQuantityUnit = StashQuantityUnit.Fraction,
-    val availableUnits: List<StashQuantityUnit> = listOf(StashQuantityUnit.Fraction),
+    val amountUnit: MeasurementType = MeasurementType.Serving,
+    val availableUnits: List<MeasurementType> = listOf(MeasurementType.Serving),
     val stashes: List<HomeStashRecipeSnapshotStash> = emptyList(),
     val selectedStashId: StashDefinitionId? = null,
     val previewNutritionFacts: NutritionFacts? = null,
@@ -225,7 +225,7 @@ internal data class HomeStashRecipeSnapshotState(
     val requiresStashSelection: Boolean
         get() = stashes.size > 1
 
-    val parsedQuantity: StashQuantity?
+    val parsedQuantity: StashMeasurement?
         get() = totalAmount.toStashQuantityOrNull(amountUnit)
 
     val parsedServings: Int?
@@ -263,18 +263,18 @@ private fun String.toPositiveIntOrNull(): Int? {
     return parsedValue.takeIf { it > 0 }
 }
 
-private fun Recipe.supportedAmountUnits(): List<StashQuantityUnit> =
+private fun Recipe.supportedAmountUnits(): List<MeasurementType> =
     listOf(
-        StashQuantityUnit.Fraction,
+        MeasurementType.Serving,
         if (isLiquid) {
-            StashQuantityUnit.Milliliter
+            MeasurementType.Milliliter
         } else {
-            StashQuantityUnit.Gram
+            MeasurementType.Gram
         },
     )
 
 private data class RecipeSnapshotFormInputs(
     val totalAmount: String,
     val servingsMade: String,
-    val amountUnit: StashQuantityUnit,
+    val amountUnit: MeasurementType,
 )

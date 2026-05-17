@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.stash.domain.entity
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import kotlin.test.Test
 import kotlin.test.assertEquals

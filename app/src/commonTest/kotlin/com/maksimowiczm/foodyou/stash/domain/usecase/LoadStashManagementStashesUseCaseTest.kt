@@ -22,7 +22,7 @@ class LoadStashManagementStashesUseCaseTest {
                     stashId = stash.id,
                     itemId = item.id,
                     operation = StashMovementOperation.ManualAdjust,
-                    quantityChange = item.quantity,
+                    measurementChange = item.measurement,
                     linkedDiaryEntryId = null,
                     createdAt = LocalDateTime(2025, 1, 3, 18, 45),
                 ).copy(id = StashMovementId(99))

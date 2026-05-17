@@ -49,7 +49,8 @@ import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
 import foodyou.app.generated.resources.action_confirm
@@ -74,6 +75,7 @@ import foodyou.app.generated.resources.message_stash_shopping_start_failed
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.unit_milliliter_short
+import foodyou.app.generated.resources.unit_stash_fraction_short
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -306,8 +308,8 @@ private fun SessionComposerCard(
                         state.pendingQuantityValue?.let { quantity ->
                             stringResource(
                                 Res.string.label_stash_shopping_pending_quantity,
-                                quantity.unit.label(),
-                            ) + ": " + quantity.amount.formatClipZeros()
+                                quantity.type.label(),
+                            ) + ": " + quantity.measurement.rawValue.formatClipZeros()
                         } ?: stringResource(Res.string.message_stash_shopping_invalid_quantity),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -447,9 +449,15 @@ private fun PreviewCard(
 }
 
 @Composable
-private fun StashQuantityUnit.label(): String =
+private fun MeasurementType.label(): String =
     when (this) {
-        StashQuantityUnit.Gram -> stringResource(Res.string.unit_gram_short)
-        StashQuantityUnit.Milliliter -> stringResource(Res.string.unit_milliliter_short)
-        StashQuantityUnit.Fraction -> ""
+        MeasurementType.Gram -> stringResource(Res.string.unit_gram_short)
+        MeasurementType.Milliliter -> stringResource(Res.string.unit_milliliter_short)
+        MeasurementType.Package,
+        MeasurementType.Serving -> stringResource(Res.string.unit_stash_fraction_short)
+        MeasurementType.Ounce -> stringResource(Res.string.unit_gram_short)
+        MeasurementType.FluidOunce -> stringResource(Res.string.unit_milliliter_short)
     }
+
+
+

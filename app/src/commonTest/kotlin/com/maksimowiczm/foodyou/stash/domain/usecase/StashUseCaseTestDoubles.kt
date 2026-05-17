@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -30,7 +31,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import com.maksimowiczm.foodyou.stash.domain.entity.StashOwnerId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlin.time.Duration
@@ -70,7 +71,7 @@ internal class FakeStashRepository(
         flowOf(
             items.values
                 .filter { it.stashId == stashId }
-                .filter { it.quantity.amount > 0.0 }
+                .filter { it.measurement.measurement.rawValue > 0.0 }
                 .sortedWith(compareByDescending(StashItem::createdAt).thenByDescending { it.id.value })
         )
 
@@ -498,23 +499,23 @@ internal fun sampleStash(
 internal fun sampleRawProductItem(
     id: Long = 1L,
     stashId: Long = 1L,
-    quantity: StashQuantity = StashQuantity.grams(500.0),
+    measurement: StashMeasurement = StashMeasurement.grams(500.0),
     product: Product = sampleProduct(),
 ): StashItem =
     StashItem(
         id = StashItemId(id),
         stashId = StashDefinitionId(stashId),
         snapshot = RawProductSnapshot.from(product),
-        quantity = quantity,
+        measurement = measurement,
         createdAt = FIXED_NOW,
     )
 
 internal fun sampleAnonymousDishItem(
     id: Long = 1L,
     stashId: Long = 1L,
-    quantity: StashQuantity = StashQuantity.fraction(2.0),
+    measurement: StashMeasurement = StashMeasurement.servings(2.0),
     recipe: Recipe = sampleRecipe(),
-    totalAmount: StashQuantity = StashQuantity.fraction(2.0),
+    totalAmount: Measurement = Measurement.Serving(2.0),
     servingsMade: Int = 8,
 ): StashItem =
     StashItem(
@@ -526,7 +527,7 @@ internal fun sampleAnonymousDishItem(
                 totalAmount = totalAmount,
                 servingsMade = servingsMade,
             ),
-        quantity = quantity,
+        measurement = measurement,
         createdAt = FIXED_NOW,
     )
 

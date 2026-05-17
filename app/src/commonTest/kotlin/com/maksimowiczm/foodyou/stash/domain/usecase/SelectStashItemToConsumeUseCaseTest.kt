@@ -1,6 +1,6 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.first
@@ -17,7 +17,7 @@ class SelectStashItemToConsumeUseCaseTest {
                             listOf(
                                 sampleRawProductItem(id = 1),
                                 sampleAnonymousDishItem(id = 2),
-                                sampleRawProductItem(id = 3, quantity = StashQuantity.grams(0.0)),
+                                sampleRawProductItem(id = 3, measurement = StashMeasurement.grams(0.0)),
                             )
                     )
             )
