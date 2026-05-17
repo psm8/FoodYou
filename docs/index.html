@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food You Stash Guide</title>
+  <title>Food You — Stash &amp; Shopping Guide</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -94,7 +94,19 @@
 
     h1 {
       font-size: clamp(2.3rem, 4vw, 3.6rem);
-      max-width: 12ch;
+      max-width: 14ch;
+    }
+
+    .flow-label {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 600;
+      vertical-align: middle;
+      margin-left: 4px;
     }
 
     p {
@@ -202,227 +214,276 @@
 </head>
 <body>
   <main class="page">
-    <section class="step" data-step="1" data-kind="single">
-      <p class="step-summary">Removed measurement fields from StashItem and StashMovement domain entities, deleted migrations, lowered DB version to 34.</p>
 
-      <div class="step-how">
-        <p>Removed write-only Measurement fields from domain entities, columns from Room entities, and both migration files. Updated mappers, callers, and tests.</p>
-      </div>
-
-      <div class="step-expect">
-        <p>No measurement references remain in stash source. DB version is 34.</p>
-      </div>
-
-      <h4>Artifacts</h4>
-      <ul class="artifacts">
-        <li class="artifact"><a href="adr/0001-stash-item-quantity-only.md">ADR-0001</a></li>
-      </ul>
-
-      <h4>Scripts</h4>
-      <pre class="script-run"><code>$ grep -r "rawMeasurement\|measurementType\|measurementRawValue\|rawMeasurementType\|rawMeasurementValue" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/ || echo "No matches found"
-No matches found
-$ grep "VERSION" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/FoodYouDatabase.kt | head -1
-const val VERSION = 34
-exit 0</code></pre>
-    </section>
-
-    <section class="step" data-step="2" data-kind="single">
-      <p class="step-summary">Consolidated scaleToQuantityOrFallback into public extension in StashQuantity.kt.</p>
-
-      <div class="step-how">
-        <p>Moved private extensions from ShoppingSession and ShoppingSessionState into StashQuantity.kt, deleted copies, updated imports.</p>
-      </div>
-
-      <div class="step-expect">
-        <p>Single definition of scaleToQuantityOrFallback in StashQuantity.kt.</p>
-      </div>
-
-      <h4>Scripts</h4>
-      <pre class="script-run"><code>$ grep -rn "scaleToQuantityOrFallback" app/src/commonMain/kotlin/
-app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/domain/entity/StashQuantity.kt:55:fun Measurement.scaleToQuantityOrFallback(
-app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/domain/entity/ShoppingSession.kt:79:item.measurement.scaleToQuantityOrFallback(
-app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/shopping/ShoppingSessionState.kt:124:sessionItem.measurement.scaleToQuantityOrFallback(
-exit 0</code></pre>
-    </section>
-
-    <section class="step" data-step="3" data-kind="single">
-      <p class="step-summary">Removed private toMeasurement() from ConsumeFromStashUseCase.</p>
-
-      <div class="step-how">
-        <p>Deleted private nullable toMeasurement() extension, replaced call sites with public non-null variant.</p>
-      </div>
-
-      <div class="step-expect">
-        <p>No private toMeasurement in ConsumeFromStashUseCase.</p>
-      </div>
-
-      <h4>Scripts</h4>
-      <pre class="script-run"><code>$ grep -n "private fun.*toMeasurement" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/domain/usecase/ConsumeFromStashUseCase.kt || echo "No matches found"
-No matches found
-exit 0</code></pre>
-    </section>
-
+    <!-- ═══════ HERO ═══════ -->
     <section class="hero">
-      <div class="eyebrow">Food You onboarding</div>
-      <h1>Use stash and shopping flows faster</h1>
+      <div class="eyebrow">Stash &amp; Shopping</div>
+      <h1>Track what you have, add what you buy</h1>
       <p>
-        Food You now makes it easier to add products, recipes, and one-off items to your stash without
-        breaking your normal routine. This guide walks through the new paths so you know what to tap,
-        what each flow is best for, and what to expect after saving.
+        Use stash to keep a running inventory of the food in your kitchen. Add products from your
+        catalog, snap a recipe into a fixed-portion item, batch-add everything from a shopping trip,
+        or quick-add a one-off without touching your product list.
       </p>
       <div class="grid">
         <article class="card">
-          <strong>Add existing products</strong>
-          Reuse the familiar search flow to add items from your food catalog straight into a stash.
+          <strong>Add a product</strong>
+          Search your catalog, pick a measurement, and save it to a stash.
         </article>
         <article class="card">
-          <strong>Build shopping sessions</strong>
-          Keep search visible while you assemble several products before committing them together.
+          <strong>Start a shopping session</strong>
+          Search and add several products in one pass, then confirm the whole batch.
         </article>
         <article class="card">
-          <strong>Save recipe snapshots</strong>
-          Turn a recipe into a stash item with its own stored nutrition and amount.
+          <strong>Save a recipe snapshot</strong>
+          Turn a recipe into a stash item with portion size and nutrition locked in.
         </article>
         <article class="card">
-          <strong>Quick add one-off items</strong>
-          Capture a manual stash item without creating a reusable product or recipe first.
+          <strong>Quick-add one-off items</strong>
+          Manually enter a food straight into stash — no catalog entry created.
         </article>
       </div>
     </section>
 
+    <!-- ═══════ ENTRY POINTS ═══════ -->
     <section class="section">
-      <h2>What each flow helps with</h2>
-      <div class="grid">
-        <article class="card">
-          <strong>Unified Add for products</strong>
-          Open <em>Add</em> from Home Stash or Stash Management when the food already exists in your catalog.
-          Pick the product, choose the measurement you already know, and save it to the target stash.
-        </article>
-        <article class="card">
-          <strong>Shopping session</strong>
-          Use this when you are stocking up and want to add several products in one pass. Search stays
-          available while you build the draft.
-        </article>
-        <article class="card">
-          <strong>Recipe snapshot</strong>
-          Choose a recipe from the same Add experience when you want to save a prepared batch into stash
-          with a fixed amount and fixed nutrition.
-        </article>
-        <article class="card">
-          <strong>Manual Quick add</strong>
-          Use Quick add for homemade, unpackaged, or temporary items that you want in stash now, without
-          adding them to your reusable food catalog.
-        </article>
+      <h2>Where to start</h2>
+      <p>
+        You can reach stash actions from two places: the <strong>Home Stash card</strong> or
+        <strong>Stash Management</strong> (accessible from the home card or settings).
+      </p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/home-stash.png" alt="Home screen showing the Kitchen stash card with Add and Quick Add actions.">
+          <figcaption class="shot-copy">
+            <strong>Home Stash card</strong>
+            Shows your recent stash items with <span class="flow-label">Add</span> and
+            <span class="flow-label">Quick Add</span> quick actions.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/stash-management.png" alt="Stash Management screen listing stashes with action icons for each one.">
+          <figcaption class="shot-copy">
+            <strong>Stash Management</strong>
+            Lists every stash with <span class="flow-label">Add</span>,
+            <span class="flow-label">Quick Add</span>, and
+            <span class="flow-label">Shopping</span> shortcuts per row.
+          </figcaption>
+        </figure>
       </div>
     </section>
 
+    <!-- ═══════ ADD A PRODUCT ═══════ -->
     <section class="section">
-      <h2>How to use the new stash flows</h2>
+      <h2>Add a product from your catalog</h2>
       <div class="steps">
         <article class="step">
           <div class="step-number">1</div>
-          <h3>Start from the stash you want to update</h3>
+          <h3>Open the Add flow</h3>
           <p>
-            Open Home Stash or Stash Management, then pick the stash that should receive the item. If you
-            use more than one stash, the target stays explicit during the flow.
+            Tap <span class="flow-label">Add</span> on the Home Stash card or a stash row in Stash Management.
+            A search screen opens where you can find any product or recipe in your food catalog.
           </p>
         </article>
         <article class="step">
           <div class="step-number">2</div>
-          <h3>Choose the flow that matches the task</h3>
-          <ul>
-            <li><strong>Add</strong> for an existing product from your food catalog.</li>
-            <li><strong>Add</strong> then choose a recipe when you want a stash snapshot from a saved recipe.</li>
-            <li><strong>Quick add</strong> when the item is one-off and should not become a reusable catalog entry.</li>
-            <li><strong>Shopping session</strong> when you want to build a multi-item draft before confirming.</li>
-          </ul>
+          <h3>Choose a product</h3>
+          <p>
+            Search by name, then tap the product you want. The measurement picker appears with
+            the units the product supports — grams, millilitres, packages, or servings.
+          </p>
         </article>
         <article class="step">
           <div class="step-number">3</div>
-          <h3>Enter the amount using familiar measurement language</h3>
+          <h3>Pick a measurement and save</h3>
           <p>
-            Product and shopping flows use the same style of measurement picker you already see elsewhere in
-            the app. That keeps amounts easier to enter and easier to review before saving.
+            Select the unit that matches how you stored it, enter the amount, and confirm.
+            The item lands in the target stash immediately. If you have multiple stashes, you can
+            pick the target before saving.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ RECIPE SNAPSHOT ═══════ -->
+    <section class="section">
+      <h2>Save a recipe as a stash snapshot</h2>
+      <p>
+        When you cook a batch from a saved recipe, you can turn it into a stash item that keeps its
+        nutrition and portion size even if you later edit the original recipe.
+      </p>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Start from Add, then pick a recipe</h3>
+          <p>
+            From the same Add search screen, tap a recipe instead of a product.
+            The recipe snapshot screen opens.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Set portion details</h3>
+          <p>
+            Choose a unit (grams, millilitres, or fractional servings), enter the total amount,
+            optionally set the number of servings made, and pick the target stash.
+            A nutrition preview updates as you change the values.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Confirm the snapshot</h3>
+          <p>
+            Save it. The stash item holds the nutrition and amount from that moment, so editing
+            the original recipe later will not affect items already in stash.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ QUICK ADD ═══════ -->
+    <section class="section">
+      <h2>Quick-add a one-off item</h2>
+      <p>
+        For homemade, unpackaged, or temporary foods that do not belong in your reusable catalog,
+        Quick Add lets you type a name and macros directly into stash.
+      </p>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Tap Quick Add</h3>
+          <p>
+            From the Home Stash card or a stash row in Stash Management, tap
+            <span class="flow-label">Quick Add</span>.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Fill in name, macros, and unit</h3>
+          <p>
+            Enter the food name, energy, protein, carbs, and fat. Pick a measurement
+            unit (grams, ounces, millilitres, or fluid ounces), then choose the target stash.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Save without creating a catalog entry</h3>
+          <p>
+            The item exists only inside stash. It will not appear in your food catalog or recipe list.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ SHOPPING SESSION ═══════ -->
+    <section class="section">
+      <h2>Shopping session — batch-add from one trip</h2>
+      <p>
+        A shopping session is a draft: search stays visible while you add product after product, adjust
+        amounts, and then confirm everything at once.
+      </p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/shopping-session-search.png" alt="Shopping session showing product search with stash context.">
+          <figcaption class="shot-copy">
+            <strong>Search stays visible throughout the session.</strong>
+            Find the next product without leaving the draft.
+          </figcaption>
+        </figure>
+      </div>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Start a session from Stash Management</h3>
+          <p>
+            Tap the <span class="flow-label">Shopping</span> icon on the stash row you want to restock.
+            The session opens with search ready.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Search, pick, and add each product</h3>
+          <p>
+            Type to search your catalog, tap a product, set the measurement and quantity in the composer,
+            then press <strong>Add</strong>. The product joins the session list and search resets so you
+            can find the next one. Recipes cannot be added through a shopping session — use the
+            Add → Recipe flow for those.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Review and adjust quantities in the session list</h3>
+          <p>
+            The session list at the bottom shows every product you added, with editable quantities
+            and a running calorie total.
           </p>
         </article>
         <article class="step">
           <div class="step-number">4</div>
-          <h3>Save and keep moving</h3>
+          <h3>Confirm the session</h3>
           <p>
-            Once you confirm, the item is saved into stash and becomes available for later consumption,
-            adjustment, movement, or merging under normal stash rules. These actions do not change your diary
-            or calorie balance until you actually consume the item.
+            When you are done, confirm the session. Every item is saved into the target stash and
+            you are taken to the stash browser.
           </p>
         </article>
       </div>
     </section>
 
+    <!-- ═══════ STASH BROWSER ═══════ -->
     <section class="section">
-      <h2>Shopping session walkthrough</h2>
+      <h2>After saving — browsing your stash</h2>
       <p>
-        The shopping session flow now keeps the search-first experience front and center. You can stay in the
-        search view, choose a product, adjust its amount in the composer, and continue adding more items
-        without losing your place.
+        Once an item lands in a stash, it shows up in the stash browser. From there you can:
       </p>
       <div class="shots">
         <figure class="shot">
-          <img src="assets/shopping-session-search.png" alt="Shopping session showing search results and the current stash context.">
+          <img src="assets/stash-browser.png" alt="Stash browser showing items in the Kitchen stash with quantity and type information.">
           <figcaption class="shot-copy">
-            <strong>Search stays visible while you build the session.</strong>
-            Search for the next product without leaving the shopping draft.
-          </figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="assets/shopping-session-composer.png" alt="Shopping session composer with selected product, measurement controls, and add action.">
-          <figcaption class="shot-copy">
-            <strong>The selected-product composer makes the next step obvious.</strong>
-            Review the product, set the amount, and add it to the draft right beside search.
+            <strong>The stash browser</strong> lists every item in the selected stash with name, quantity, and type.
           </figcaption>
         </figure>
       </div>
-    </section>
-
-    <section class="section">
-      <h2>What to expect after saving</h2>
       <div class="grid">
         <article class="card">
-          <strong>Repeated adds can combine cleanly</strong>
-          When you add the same item into the same stash again, Food You can keep the stash view tidy while
-          still preserving the underlying movement history.
+          <strong>Consume</strong>
+          Record some or all of an item against a meal in your food diary. Enter the amount,
+          pick a meal, choose a date, and the nutrition updates your daily totals.
         </article>
         <article class="card">
-          <strong>Recipe snapshots stay stable</strong>
-          A stash item created from a recipe keeps the saved nutrition and amount for that snapshot, even if
-          you later edit the original recipe.
+          <strong>Adjust quantity</strong>
+          Increase or decrease the amount on hand — for example after using part of an item
+          without a full diary entry.
         </article>
         <article class="card">
-          <strong>Quick add stays out of your catalog</strong>
-          One-off stash items do not turn into reusable product or recipe entries unless you create those
-          separately on purpose.
+          <strong>Move between stashes</strong>
+          Transfer an item from one stash to another while keeping the movement history intact.
         </article>
         <article class="card">
-          <strong>Diary totals stay unchanged</strong>
-          Stash intake records inventory only. Nutrition counts apply when the item is consumed later.
+          <strong>Remove</strong>
+          Delete an item and optionally log a reason and note for your records.
         </article>
       </div>
     </section>
 
+    <!-- ═══════ FAQ ═══════ -->
     <section class="section">
-      <h2>Next steps</h2>
+      <h2>Common questions</h2>
       <div class="faq">
         <article class="card">
-          <strong>Need to stock a stash quickly?</strong>
-          Start a shopping session from Stash Management, add several products, then confirm the whole draft
-          when you are ready.
+          <strong>Does adding to stash affect my food diary?</strong>
+          No. Stash tracks inventory only. Nutrition counts apply when you consume an item from stash.
         </article>
         <article class="card">
-          <strong>Need to save leftovers or a homemade batch?</strong>
-          Use recipe snapshot when the recipe already exists, or Quick add when it is a one-off item that
-          should stay local to stash.
+          <strong>What if I add the same product twice?</strong>
+          Food You can combine repeated adds cleanly while keeping the underlying movement history.
         </article>
         <article class="card">
-          <strong>Want more general app help?</strong>
-          Visit the rest of the project docs in <a href="docs/">docs/</a> for setup and project information.
+          <strong>Can I edit a recipe snapshot later?</strong>
+          The snapshot is independent — editing the original recipe does not change items already in stash.
+        </article>
+        <article class="card">
+          <strong>Does Quick Add create a product I can reuse?</strong>
+          No. Quick-add items stay local to stash. If you want a reusable entry, add it through the
+          normal product flow instead.
         </article>
       </div>
     </section>
