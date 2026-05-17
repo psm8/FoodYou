@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.stash.infrastructure.repository
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.infrastructure.room.toDomain
@@ -16,9 +18,9 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import com.maksimowiczm.foodyou.stash.domain.entity.StashOwnerId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDefinitionDao
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDefinitionEntity
@@ -151,13 +153,13 @@ private fun StashItemEntity.toModel(): StashItem =
                         isLiquid = snapshotIsLiquid,
                         totalWeight = requireNotNull(snapshotTotalWeight),
                         totalAmount =
-                            StashQuantity(
-                                amount = requireNotNull(snapshotTotalAmount),
-                                unit = requireNotNull(snapshotTotalAmountUnit),
+                            Measurement.from(
+                                requireNotNull(snapshotTotalAmountType),
+                                requireNotNull(snapshotTotalAmount),
                             ),
                     )
             },
-        quantity = StashQuantity(amount = quantity, unit = baseUnit),
+        measurement = StashMeasurement(Measurement.from(measurementType, rawValue)),
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
     )
 
@@ -170,8 +172,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                 id = id.value,
                 stashId = stashId.value,
                 snapshotType = StashItemSnapshotType.RawProduct,
-                quantity = quantity.amount,
-                baseUnit = quantity.unit,
+                rawValue = measurement.measurement.rawValue,
+                measurementType = measurement.measurement.type,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
                 snapshotProductId = snapshot.productId?.id,
                 snapshotName = snapshot.name,
@@ -184,7 +186,7 @@ private fun StashItem.toEntity(): StashItemEntity {
                 snapshotServingWeight = snapshot.servingWeight,
                 snapshotTotalWeight = snapshot.totalWeight,
                 snapshotTotalAmount = null,
-                snapshotTotalAmountUnit = null,
+                snapshotTotalAmountType = null,
                 nutrients = nutrients,
                 vitamins = vitamins,
                 minerals = minerals,
@@ -195,8 +197,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                 id = id.value,
                 stashId = stashId.value,
                 snapshotType = StashItemSnapshotType.AnonymousDish,
-                quantity = quantity.amount,
-                baseUnit = quantity.unit,
+                rawValue = measurement.measurement.rawValue,
+                measurementType = measurement.measurement.type,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
                 snapshotProductId = null,
                 snapshotName = snapshot.name,
@@ -208,8 +210,8 @@ private fun StashItem.toEntity(): StashItemEntity {
                 snapshotSourceUrl = null,
                 snapshotServingWeight = snapshot.servingWeight,
                 snapshotTotalWeight = snapshot.totalWeight,
-                snapshotTotalAmount = snapshot.totalAmount.amount,
-                snapshotTotalAmountUnit = snapshot.totalAmount.unit,
+                snapshotTotalAmount = snapshot.totalAmount.rawValue,
+                snapshotTotalAmountType = snapshot.totalAmount.type,
                 nutrients = nutrients,
                 vitamins = vitamins,
                 minerals = minerals,
@@ -223,7 +225,7 @@ private fun StashMovementEntity.toModel(): StashMovement =
         stashId = StashDefinitionId(stashId),
         itemId = StashItemId(itemId),
         operation = operation,
-        quantityChange = StashQuantity(quantityChange, quantityUnit),
+        measurementChange = StashMeasurement(Measurement.from(measurementType, rawValue)),
         linkedDiaryEntryId = linkedDiaryEntryId?.let(::LinkedDiaryEntryId),
         note = note,
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
@@ -235,8 +237,8 @@ private fun StashMovement.toEntity(): StashMovementEntity =
         stashId = stashId.value,
         itemId = itemId.value,
         operation = operation,
-        quantityChange = quantityChange.amount,
-        quantityUnit = quantityChange.unit,
+        rawValue = measurementChange.measurement.rawValue,
+        measurementType = measurementChange.measurement.type,
         linkedDiaryEntryId = linkedDiaryEntryId?.value,
         note = note,
         createdAtEpochSeconds = createdAt.toEpochSeconds(),
