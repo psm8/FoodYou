@@ -121,12 +121,10 @@ class ShoppingSessionViewModelTest {
             assertEquals(2, stashRepository.allItems().size)
             assertEquals(2, stashRepository.allMovements().size)
             assertEquals(StashQuantity.grams(1500.0), stashRepository.allItems().first().quantity)
-            assertEquals(Measurement.Package(1.5), stashRepository.allItems().first().measurement)
             assertEquals(
                 StashQuantity.milliliters(400.0),
                 stashRepository.allItems().last().quantity,
             )
-            assertEquals(Measurement.Package(0.4), stashRepository.allItems().last().measurement)
             assertEquals(emptyList(), viewModel.state.value.items)
             assertEquals(0.0, viewModel.state.value.totalCalories)
         }
@@ -160,7 +158,6 @@ class ShoppingSessionViewModelTest {
 
             assertIs<ShoppingSessionEvent.Finished>(event.await())
             assertEquals(StashQuantity.grams(300.0), stashRepository.allItems().single().quantity)
-            assertEquals(Measurement.Gram(300.0), stashRepository.allItems().single().measurement)
         }
 
     @Test
@@ -191,7 +188,6 @@ class ShoppingSessionViewModelTest {
 
             assertIs<ShoppingSessionEvent.Finished>(event.await())
             assertEquals(StashQuantity.grams(750.0), stashRepository.allItems().single().quantity)
-            assertEquals(Measurement.Package(0.75), stashRepository.allItems().single().measurement)
         }
 
     @Test

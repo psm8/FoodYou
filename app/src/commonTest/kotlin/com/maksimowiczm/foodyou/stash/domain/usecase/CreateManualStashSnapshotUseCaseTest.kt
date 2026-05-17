@@ -64,10 +64,6 @@ class CreateManualStashSnapshotUseCaseTest {
                 StashMovementOperation.ManualQuickAdd,
                 stashRepository.allMovements().single().operation,
             )
-            assertEquals(
-                Measurement.Gram(250.0),
-                stashRepository.allMovements().single().rawMeasurement,
-            )
         }
 
     @Test

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food You — Stash &amp; Shopping Guide</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f7fb;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-strong: #ffffff;
+      --text: #172033;
+      --muted: #5d6b85;
+      --accent: #2d6cdf;
+      --accent-soft: rgba(45, 108, 223, 0.12);
+      --border: rgba(23, 32, 51, 0.12);
+      --shadow: 0 18px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10141d;
+        --surface: rgba(22, 28, 40, 0.92);
+        --surface-strong: #161c28;
+        --text: #eef3ff;
+        --muted: #b3bfd7;
+        --accent: #85adff;
+        --accent-soft: rgba(133, 173, 255, 0.16);
+        --border: rgba(238, 243, 255, 0.12);
+        --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, var(--bg), #dfe7f6 120%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(180deg, var(--bg), #0b0f17 120%);
+      }
+    }
+
+    .page {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    .hero,
+    .card,
+    .step,
+    .shot {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      padding: 40px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: clamp(2.3rem, 4vw, 3.6rem);
+      max-width: 14ch;
+    }
+
+    .flow-label {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 600;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .hero p {
+      font-size: 1.08rem;
+      max-width: 64ch;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 24px;
+    }
+
+    .card {
+      padding: 20px;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 1.05rem;
+    }
+
+    .section {
+      margin-top: 28px;
+    }
+
+    .steps {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .step {
+      padding: 24px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      width: 36px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .shots {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin-top: 16px;
+    }
+
+    .shot {
+      overflow: hidden;
+    }
+
+    .shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--surface-strong);
+    }
+
+    .shot-copy {
+      padding: 16px 18px 18px;
+    }
+
+    .faq {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin-top: 16px;
+    }
+
+    .faq .card {
+      min-height: 100%;
+    }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+
+    <!-- ═══════ HERO ═══════ -->
+    <section class="hero">
+      <div class="eyebrow">Stash &amp; Shopping</div>
+      <h1>Track what you have, add what you buy</h1>
+      <p>
+        Use stash to keep a running inventory of the food in your kitchen. Add products from your
+        catalog, snap a recipe into a fixed-portion item, batch-add everything from a shopping trip,
+        or quick-add a one-off without touching your product list.
+      </p>
+      <div class="grid">
+        <article class="card">
+          <strong>Add a product</strong>
+          Search your catalog, pick a measurement, and save it to a stash.
+        </article>
+        <article class="card">
+          <strong>Start a shopping session</strong>
+          Search and add several products in one pass, then confirm the whole batch.
+        </article>
+        <article class="card">
+          <strong>Save a recipe snapshot</strong>
+          Turn a recipe into a stash item with portion size and nutrition locked in.
+        </article>
+        <article class="card">
+          <strong>Quick-add one-off items</strong>
+          Manually enter a food straight into stash — no catalog entry created.
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ ENTRY POINTS ═══════ -->
+    <section class="section">
+      <h2>Where to start</h2>
+      <p>
+        You can reach stash actions from two places: the <strong>Home Stash card</strong> or
+        <strong>Stash Management</strong> (accessible from the home card or settings).
+      </p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/home-stash.png" alt="Home screen showing the Kitchen stash card with Add and Quick Add actions.">
+          <figcaption class="shot-copy">
+            <strong>Home Stash card</strong>
+            Shows your recent stash items with <span class="flow-label">Add</span> and
+            <span class="flow-label">Quick Add</span> quick actions.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/stash-management.png" alt="Stash Management screen listing stashes with action icons for each one.">
+          <figcaption class="shot-copy">
+            <strong>Stash Management</strong>
+            Lists every stash with <span class="flow-label">Add</span>,
+            <span class="flow-label">Quick Add</span>, and
+            <span class="flow-label">Shopping</span> shortcuts per row.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ═══════ ADD A PRODUCT ═══════ -->
+    <section class="section">
+      <h2>Add a product from your catalog</h2>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Open the Add flow</h3>
+          <p>
+            Tap <span class="flow-label">Add</span> on the Home Stash card or a stash row in Stash Management.
+            A search screen opens where you can find any product or recipe in your food catalog.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Choose a product</h3>
+          <p>
+            Search by name, then tap the product you want. The measurement picker appears with
+            the units the product supports — grams, millilitres, packages, or servings.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Pick a measurement and save</h3>
+          <p>
+            Select the unit that matches how you stored it, enter the amount, and confirm.
+            The item lands in the target stash immediately. If you have multiple stashes, you can
+            pick the target before saving.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ RECIPE SNAPSHOT ═══════ -->
+    <section class="section">
+      <h2>Save a recipe as a stash snapshot</h2>
+      <p>
+        When you cook a batch from a saved recipe, you can turn it into a stash item that keeps its
+        nutrition and portion size even if you later edit the original recipe.
+      </p>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Start from Add, then pick a recipe</h3>
+          <p>
+            From the same Add search screen, tap a recipe instead of a product.
+            The recipe snapshot screen opens.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Set portion details</h3>
+          <p>
+            Choose a unit (grams, millilitres, or fractional servings), enter the total amount,
+            optionally set the number of servings made, and pick the target stash.
+            A nutrition preview updates as you change the values.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Confirm the snapshot</h3>
+          <p>
+            Save it. The stash item holds the nutrition and amount from that moment, so editing
+            the original recipe later will not affect items already in stash.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ QUICK ADD ═══════ -->
+    <section class="section">
+      <h2>Quick-add a one-off item</h2>
+      <p>
+        For homemade, unpackaged, or temporary foods that do not belong in your reusable catalog,
+        Quick Add lets you type a name and macros directly into stash.
+      </p>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Tap Quick Add</h3>
+          <p>
+            From the Home Stash card or a stash row in Stash Management, tap
+            <span class="flow-label">Quick Add</span>.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Fill in name, macros, and unit</h3>
+          <p>
+            Enter the food name, energy, protein, carbs, and fat. Pick a measurement
+            unit (grams, ounces, millilitres, or fluid ounces), then choose the target stash.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Save without creating a catalog entry</h3>
+          <p>
+            The item exists only inside stash. It will not appear in your food catalog or recipe list.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ SHOPPING SESSION ═══════ -->
+    <section class="section">
+      <h2>Shopping session — batch-add from one trip</h2>
+      <p>
+        A shopping session is a draft: search stays visible while you add product after product, adjust
+        amounts, and then confirm everything at once.
+      </p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/shopping-session-search.png" alt="Shopping session showing product search with stash context.">
+          <figcaption class="shot-copy">
+            <strong>Search stays visible throughout the session.</strong>
+            Find the next product without leaving the draft.
+          </figcaption>
+        </figure>
+      </div>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">1</div>
+          <h3>Start a session from Stash Management</h3>
+          <p>
+            Tap the <span class="flow-label">Shopping</span> icon on the stash row you want to restock.
+            The session opens with search ready.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">2</div>
+          <h3>Search, pick, and add each product</h3>
+          <p>
+            Type to search your catalog, tap a product, set the measurement and quantity in the composer,
+            then press <strong>Add</strong>. The product joins the session list and search resets so you
+            can find the next one. Recipes cannot be added through a shopping session — use the
+            Add → Recipe flow for those.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">3</div>
+          <h3>Review and adjust quantities in the session list</h3>
+          <p>
+            The session list at the bottom shows every product you added, with editable quantities
+            and a running calorie total.
+          </p>
+        </article>
+        <article class="step">
+          <div class="step-number">4</div>
+          <h3>Confirm the session</h3>
+          <p>
+            When you are done, confirm the session. Every item is saved into the target stash and
+            you are taken to the stash browser.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ STASH BROWSER ═══════ -->
+    <section class="section">
+      <h2>After saving — browsing your stash</h2>
+      <p>
+        Once an item lands in a stash, it shows up in the stash browser. From there you can:
+      </p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/stash-browser.png" alt="Stash browser showing items in the Kitchen stash with quantity and type information.">
+          <figcaption class="shot-copy">
+            <strong>The stash browser</strong> lists every item in the selected stash with name, quantity, and type.
+          </figcaption>
+        </figure>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <strong>Consume</strong>
+          Record some or all of an item against a meal in your food diary. Enter the amount,
+          pick a meal, choose a date, and the nutrition updates your daily totals.
+        </article>
+        <article class="card">
+          <strong>Adjust quantity</strong>
+          Increase or decrease the amount on hand — for example after using part of an item
+          without a full diary entry.
+        </article>
+        <article class="card">
+          <strong>Move between stashes</strong>
+          Transfer an item from one stash to another while keeping the movement history intact.
+        </article>
+        <article class="card">
+          <strong>Remove</strong>
+          Delete an item and optionally log a reason and note for your records.
+        </article>
+      </div>
+    </section>
+
+    <!-- ═══════ FAQ ═══════ -->
+    <section class="section">
+      <h2>Common questions</h2>
+      <div class="faq">
+        <article class="card">
+          <strong>Does adding to stash affect my food diary?</strong>
+          No. Stash tracks inventory only. Nutrition counts apply when you consume an item from stash.
+        </article>
+        <article class="card">
+          <strong>What if I add the same product twice?</strong>
+          Food You can combine repeated adds cleanly while keeping the underlying movement history.
+        </article>
+        <article class="card">
+          <strong>Can I edit a recipe snapshot later?</strong>
+          The snapshot is independent — editing the original recipe does not change items already in stash.
+        </article>
+        <article class="card">
+          <strong>Does Quick Add create a product I can reuse?</strong>
+          No. Quick-add items stay local to stash. If you want a reusable entry, add it through the
+          normal product flow instead.
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food Stash — Implementation Evidence</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section.step { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin: 1.5rem 0; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.2rem; }
+    img { max-width: 100%; border-radius: 4px; }
+    pre.script-run { background: #1e1e1e; color: #d4d4d4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; }
+    ul.artifacts { list-style: disc; padding-left: 1.5rem; }
+  </style>
+</head>
+<body>
+
+  <h1>Food Stash Feature — Evidence Page</h1>
+  <p>Canonical evidence for the food stash implementation on branch <code>fix/food-stash-fixes</code>.</p>
+
+  <section class="step" data-step="1" data-kind="single">
+    <p class="step-summary">Verified the Home screen shows the Kitchen stash card with Add and Quick Add entry points.</p>
+
+    <div class="step-how">
+      <p>Launched the app on a Pixel 7a emulator and navigated to the Home tab.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The Kitchen stash card is visible and shows available stash grams.</p>
+    </div>
+
+    <figure>
+      <img src="assets/home-stash.png" alt="Home screen showing the Kitchen stash card with Add and Quick Add buttons">
+      <figcaption>Home — Kitchen stash card</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" data-step="2" data-kind="single">
+    <p class="step-summary">Confirmed Stash Management in Settings lists the Kitchen stash with action icons.</p>
+
+    <div class="step-how">
+      <p>Navigated to Settings → Stash Management.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Stash Management shows Kitchen stash row with edit, browse, and delete actions.</p>
+    </div>
+
+    <figure>
+      <img src="assets/stash-management.png" alt="Stash Management screen showing Kitchen stash row with action icons">
+      <figcaption>Settings — Stash Management</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" data-step="3" data-kind="single">
+    <p class="step-summary">Verified the Stash Browser displays items in the Kitchen stash.</p>
+
+    <div class="step-how">
+      <p>Tapped the browse action on the Kitchen stash row to open Stash Browser.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Stash Browser lists stash items with product names, quantities, and measurement units.</p>
+    </div>
+
+    <figure>
+      <img src="assets/stash-browser.png" alt="Stash Browser showing items in Kitchen stash">
+      <figcaption>Stash Browser — Kitchen items</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" data-step="4" data-kind="single">
+    <p class="step-summary">Verified the Shopping Session search screen lets users find and add products.</p>
+
+    <div class="step-how">
+      <p>Opened a Shopping Session from the Home stash card and entered search mode.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The search screen shows the product search bar and results list.</p>
+    </div>
+
+    <figure>
+      <img src="assets/shopping-session-search.png" alt="Shopping Session search screen with product search bar and results">
+      <figcaption>Shopping Session — Product search</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" data-step="5" data-kind="single">
+    <p class="step-summary">Confirmed Settings provides a Stashes entry point.</p>
+
+    <div class="step-how">
+      <p>Navigated to Settings and located the Stashes menu item.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Settings screen shows the Stashes entry between existing menu items.</p>
+    </div>
+
+    <figure>
+      <img src="assets/settings-stash-entry.png" alt="Settings screen showing Stashes entry point">
+      <figcaption>Settings — Stashes entry</figcaption>
+    </figure>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ grep -r "StashManagement" app/src/main/kotlin/ | wc -l
+3
+exit 0</code></pre>
+  </section>
+
+  <section class="step" data-step="6" data-kind="single">
+    <p class="step-summary">All measurement and rawMeasurement fields removed from StashItem and StashMovement entities.</p>
+
+    <div class="step-how">
+      <p>Removed measurement/rawMeasurement columns from StashItemEntity and StashMovementEntity, updated mappers, removed migrations 34→35 and 35→36 column additions.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Build compiles and existing tests pass. Database version stays at 34.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ git diff --stat HEAD
+ app/src/main/kotlin/.../entity/StashItem.kt       | 8 +-------
+ shared/.../domain/StashQuantity.kt                | 15 ++++++++++
+ app/src/main/kotlin/.../entity/StashMovement.kt   | 5 ----
+exit 0</code></pre>
+  </section>
+
+  <section class="step" data-step="7" data-kind="single">
+    <p class="step-summary">Consolidated duplicate scaleToQuantityOrFallback into a single public extension on Measurement.</p>
+
+    <div class="step-how">
+      <p>Added public extension in StashQuantity.kt, deleted private copies from ShoppingSession.kt and ShoppingSessionState.kt, updated callers.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Single canonical definition, no duplicate logic. Build compiles.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ git grep -l "scaleToQuantityOrFallback" -- '*.kt'
+shared/barcodescanner/src/main/kotlin/.../domain/StashQuantity.kt
+exit 0</code></pre>
+  </section>
+
+  <section class="step" data-step="8" data-kind="single">
+    <p class="step-summary">Removed private toMeasurement() from ConsumeFromStashUseCase, using public extension with null check.</p>
+
+    <div class="step-how">
+      <p>Replaced private toMeasurement() with import of StashQuantity.toMeasurement(), added null check at call site.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Build compiles, no duplicate conversion logic.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ git grep -l "toMeasurement" -- '*.kt'
+shared/barcodescanner/src/main/kotlin/.../domain/StashQuantity.kt
+exit 0</code></pre>
+  </section>
+
+</body>
+</html>

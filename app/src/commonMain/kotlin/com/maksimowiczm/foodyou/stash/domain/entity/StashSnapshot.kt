@@ -2,6 +2,10 @@ package com.maksimowiczm.foodyou.stash.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
@@ -52,34 +56,38 @@ data class AnonymousDishSnapshot(
     override val note: String?,
     override val isLiquid: Boolean,
     override val totalWeight: Double,
-    val totalAmount: StashQuantity,
+    val totalAmount: Measurement,
 ) : StashSnapshot {
     init {
         require(totalWeight >= 0.0) { "Dish total weight must not be negative" }
-        require(totalAmount.amount > 0.0) { "Dish total amount must be greater than 0" }
+        require(totalAmount.rawValue > 0.0) { "Dish total amount must be greater than 0" }
     }
 
-    override val servingWeight: Double = totalWeight / totalAmount.amount
+    override val servingWeight: Double = totalWeight / totalAmount.rawValue
 
     companion object {
-        fun from(recipe: Recipe, totalAmount: StashQuantity): AnonymousDishSnapshot =
+        fun from(recipe: Recipe, totalAmount: Measurement): AnonymousDishSnapshot =
             from(recipe = recipe, totalAmount = totalAmount, servingsMade = recipe.servings)
 
         fun from(
             recipe: Recipe,
-            totalAmount: StashQuantity,
+            totalAmount: Measurement,
             servingsMade: Int,
         ): AnonymousDishSnapshot {
             require(servingsMade > 0) { "Dish servings must be greater than 0" }
             val totalWeight =
-                when (totalAmount.unit) {
-                    StashQuantityUnit.Fraction -> {
+                when (totalAmount.type) {
+                    MeasurementType.Serving,
+                    MeasurementType.Package -> {
                         val batchMultiplier = servingsMade.toDouble() / recipe.servings.toDouble()
                         recipe.totalWeight * batchMultiplier
                     }
 
-                    StashQuantityUnit.Gram,
-                    StashQuantityUnit.Milliliter -> totalAmount.amount
+                    MeasurementType.Gram,
+                    MeasurementType.Milliliter -> totalAmount.rawValue
+
+                    MeasurementType.Ounce,
+                    MeasurementType.FluidOunce -> totalAmount.rawValue
                 }
             return AnonymousDishSnapshot(
                 name = recipe.name,

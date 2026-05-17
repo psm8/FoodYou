@@ -4,16 +4,13 @@ import androidx.compose.runtime.Immutable
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
-import com.maksimowiczm.foodyou.common.domain.measurement.from
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
-import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
-import com.maksimowiczm.foodyou.stash.domain.entity.toMeasurement
+import com.maksimowiczm.foodyou.stash.domain.entity.scaleToQuantityOrFallback
 import kotlin.jvm.JvmInline
 
 @Immutable
@@ -146,18 +143,6 @@ internal data class ShoppingSessionListItem(
                 sessionItem = sessionItem,
             )
     }
-}
-
-private fun Measurement.scaleToQuantityOrFallback(
-    previousQuantity: StashQuantity,
-    updatedQuantity: StashQuantity,
-): Measurement {
-    if (previousQuantity.amount <= 0.0) {
-        return updatedQuantity.toMeasurement()
-    }
-
-    val ratio = updatedQuantity.amount / previousQuantity.amount
-    return Measurement.from(type, rawValue * ratio)
 }
 
 @Immutable

@@ -24,8 +24,8 @@ abstract class AbstractStashCoreMigrationTest {
                 INSERT INTO StashItem (
                     stashId,
                     snapshotType,
-                    quantity,
-                    baseUnit,
+                    rawValue,
+                    measurementType,
                     createdAtEpochSeconds,
                     snapshotName,
                     snapshotIsLiquid,
@@ -41,12 +41,13 @@ abstract class AbstractStashCoreMigrationTest {
                     stashId,
                     itemId,
                     operation,
-                    quantityChange,
-                    quantityUnit,
+                    rawValue,
+                    measurementType,
                     linkedDiaryEntryId,
+                    note,
                     createdAtEpochSeconds
                 )
-                VALUES (1, 1, 0, 500.0, 0, 42, 3)
+                VALUES (1, 1, 0, 500.0, 0, 42, 'test note', 3)
                 """
                     .trimIndent()
             )
@@ -66,6 +67,10 @@ abstract class AbstractStashCoreMigrationTest {
             connection.prepare("SELECT linkedDiaryEntryId FROM StashMovement").use { statement ->
                 statement.step()
                 assertEquals(42, statement.getLong(0))
+            }
+            connection.prepare("SELECT note FROM StashMovement").use { statement ->
+                statement.step()
+                assertEquals("test note", statement.getText(0))
             }
         }
     }

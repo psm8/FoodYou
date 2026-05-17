@@ -5,12 +5,11 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import com.maksimowiczm.foodyou.common.infrastructure.room.Minerals
 import com.maksimowiczm.foodyou.common.infrastructure.room.Nutrients
 import com.maksimowiczm.foodyou.common.infrastructure.room.Vitamins
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 
 @Entity(
     tableName = "StashItem",
@@ -29,13 +28,9 @@ data class StashItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val stashId: Long,
     val snapshotType: StashItemSnapshotType,
-    val quantity: Double,
-    val baseUnit: StashQuantityUnit,
+    val rawValue: Double,
+    val measurementType: MeasurementType,
     val createdAtEpochSeconds: Long,
-    val measurementType: MeasurementType?,
-    val measurementRawValue: Double?,
-    val rawMeasurementType: MeasurementType?,
-    val rawMeasurementValue: Double?,
     val snapshotProductId: Long?,
     val snapshotName: String,
     val snapshotNote: String?,
@@ -47,7 +42,7 @@ data class StashItemEntity(
     val snapshotServingWeight: Double?,
     val snapshotTotalWeight: Double?,
     val snapshotTotalAmount: Double?,
-    val snapshotTotalAmountUnit: StashQuantityUnit?,
+    val snapshotTotalAmountType: MeasurementType?,
     @Embedded(prefix = "snapshot_") val nutrients: Nutrients,
     @Embedded(prefix = "snapshot_") val vitamins: Vitamins,
     @Embedded(prefix = "snapshot_") val minerals: Minerals,

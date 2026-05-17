@@ -12,6 +12,7 @@ internal class StaticChangelog(private val appConfig: AppConfig) : Changelog {
     override val versions: List<Version>
         get() =
             listOf(
+                v_3_50,
                 v_3_4_7,
                 v_3_4_5,
                 v_3_4_4,
@@ -51,6 +52,26 @@ internal class StaticChangelog(private val appConfig: AppConfig) : Changelog {
                 v2_1_0,
                 v2_0_0,
             )
+
+    val v_3_50 =
+        Version(
+            version = "3.50",
+            date = LocalDate(2026, 4, 13),
+            newFeatures =
+                listOf(
+                    "Added the Stash module for managing ingredients and pantry stock.",
+                    "Added shopping sessions plus home quick-add and recipe snapshot shortcuts for Stash."
+                ),
+            changes =
+                listOf(
+                    "Integrated Stash with recipe and food diary flows to keep tracked quantities aligned.",
+                    "Added Stash settings and home screen personalization support."
+                ),
+            bugFixes =
+                listOf(
+                    "Improved quantity handling robustness across stash adjustments and shopping confirmation."
+                ),
+        )
 
     val v_3_4_7 =
         Version(

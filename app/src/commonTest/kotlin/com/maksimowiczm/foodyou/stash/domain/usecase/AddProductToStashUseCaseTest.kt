@@ -39,8 +39,8 @@ class AddProductToStashUseCaseTest {
                 stashRepository.allItems().single().snapshot,
             )
             assertEquals(
-                Measurement.Gram(250.0),
-                stashRepository.allItems().single().rawMeasurement,
+                StashQuantity.grams(250.0),
+                stashRepository.allItems().single().quantity,
             )
             assertEquals(
                 StashMovementOperation.Purchase,
@@ -49,10 +49,6 @@ class AddProductToStashUseCaseTest {
             assertEquals(
                 StashQuantity.grams(250.0),
                 stashRepository.allMovements().single().quantityChange,
-            )
-            assertEquals(
-                Measurement.Gram(250.0),
-                stashRepository.allMovements().single().rawMeasurement,
             )
         }
 
@@ -205,14 +201,6 @@ class AddProductToStashUseCaseTest {
             assertEquals(1, stashRepository.allItems().size)
             assertEquals(StashQuantity.grams(200.0), stashRepository.allItems().single().quantity)
             assertEquals(
-                Measurement.Serving(1.0),
-                stashRepository.allItems().single().rawMeasurement,
-            )
-            assertEquals(
-                listOf(Measurement.Gram(100.0), Measurement.Serving(1.0)),
-                stashRepository.allMovements().map { it.rawMeasurement },
-            )
-            assertEquals(
                 listOf(StashQuantity.grams(100.0), StashQuantity.grams(100.0)),
                 stashRepository.allMovements().map { it.quantityChange },
             )
@@ -254,10 +242,6 @@ class AddProductToStashUseCaseTest {
             assertEquals(
                 StashQuantity.grams(200.0),
                 stashRepository.allMovements().single().quantityChange,
-            )
-            assertEquals(
-                Measurement.Gram(200.0),
-                stashRepository.allMovements().single().rawMeasurement,
             )
             assertEquals(success.data.itemId, stashRepository.allItems().last().id)
         }
