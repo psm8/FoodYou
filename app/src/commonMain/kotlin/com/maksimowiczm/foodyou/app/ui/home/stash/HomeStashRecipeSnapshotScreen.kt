@@ -27,7 +27,7 @@ import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.shared.component.NutrientList
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_save
 import foodyou.app.generated.resources.description_loading
@@ -255,9 +255,10 @@ private fun HomeStashRecipeSnapshotError.message(): String =
     }
 
 @Composable
-private fun StashQuantityUnit.label(): String =
+private fun MeasurementType.label(): String =
     when (this) {
-        StashQuantityUnit.Gram -> stringResource(Res.string.unit_gram_short)
-        StashQuantityUnit.Milliliter -> stringResource(Res.string.unit_milliliter_short)
-        StashQuantityUnit.Fraction -> stringResource(Res.string.unit_stash_fraction_short)
+        MeasurementType.Gram -> stringResource(Res.string.unit_gram_short)
+        MeasurementType.Milliliter -> stringResource(Res.string.unit_milliliter_short)
+        MeasurementType.Serving -> stringResource(Res.string.unit_stash_fraction_short)
+        else -> stringResource(Res.string.unit_stash_fraction_short)
     }

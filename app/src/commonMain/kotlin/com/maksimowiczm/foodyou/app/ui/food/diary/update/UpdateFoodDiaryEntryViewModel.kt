@@ -14,7 +14,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryReposi
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UnpackFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UpdateFoodDiaryEntryUseCase
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ReturnPartialMealToStashUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -112,17 +112,17 @@ internal class UpdateFoodDiaryEntryViewModel(
                 return@launch
             }
 
-            val quantityToReturn =
+            val measurementToReturn =
                 if (currentEntry.food.isLiquid) {
-                    StashQuantity.milliliters(currentWeight - updatedWeight)
+                    StashMeasurement.milliliters(currentWeight - updatedWeight)
                 } else {
-                    StashQuantity.grams(currentWeight - updatedWeight)
+                    StashMeasurement.grams(currentWeight - updatedWeight)
                 }
 
             returnPartialMealToStashUseCase
                 .returnToStash(
                     entryId = entryId,
-                    quantityToReturn = quantityToReturn,
+                    measurementToReturn = measurementToReturn,
                     mealId = mealId,
                     date = date,
                 ).onSuccess { _uiEvents.send(UpdateEntryEvent.Saved) }

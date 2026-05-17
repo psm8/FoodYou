@@ -5,19 +5,18 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlinx.coroutines.flow.first
 
 sealed interface AddToShoppingSessionError {
     data class ProductNotFound(val id: FoodId.Product) : AddToShoppingSessionError
 
-    data object NonPositiveQuantity : AddToShoppingSessionError
-
-    data object InvalidQuantityUnit : AddToShoppingSessionError
+    data object UnsupportedMeasurement : AddToShoppingSessionError
 }
 
 class AddToShoppingSessionUseCase(
@@ -38,27 +37,20 @@ class AddToShoppingSessionUseCase(
             )
         }
 
-        val weight = product.weight(measurement)
-        if (weight == null || weight <= 0.0) {
+        if (!product.supportsStashMeasurement(measurement)) {
             return logger.logAndReturnFailure(
                 tag = TAG,
-                error = AddToShoppingSessionError.NonPositiveQuantity,
-                message = { "Shopping session measurement must resolve to a positive quantity." },
+                error = AddToShoppingSessionError.UnsupportedMeasurement,
+                message = { "Product ${product.id} does not support measurement type ${measurement.type}." },
             )
         }
 
-        val quantity =
-            if (product.isLiquid) {
-                StashQuantity.milliliters(weight)
-            } else {
-                StashQuantity.grams(weight)
-            }
-
-        if (!product.supportsStashQuantity(quantity)) {
+        val stashMeasurement = product.toStashMeasurementOrNull(measurement)
+        if (stashMeasurement == null) {
             return logger.logAndReturnFailure(
                 tag = TAG,
-                error = AddToShoppingSessionError.InvalidQuantityUnit,
-                message = { "Product ${product.id} does not support quantity unit ${quantity.unit}." },
+                error = AddToShoppingSessionError.UnsupportedMeasurement,
+                message = { "Product ${product.id} measurement $measurement is not valid." },
             )
         }
 
@@ -66,8 +58,7 @@ class AddToShoppingSessionUseCase(
             session.add(
                 productId = product.id,
                 snapshot = RawProductSnapshot.from(product),
-                measurement = measurement,
-                quantity = quantity,
+                measurement = stashMeasurement,
             )
         )
     }

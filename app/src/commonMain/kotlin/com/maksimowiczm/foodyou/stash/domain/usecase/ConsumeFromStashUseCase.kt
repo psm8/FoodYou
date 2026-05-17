@@ -4,6 +4,10 @@ import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
@@ -18,11 +22,9 @@ import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
-import com.maksimowiczm.foodyou.stash.domain.entity.toMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDate
@@ -37,8 +39,8 @@ sealed interface ConsumeFromStashError {
     data object InvalidAmount : ConsumeFromStashError
 
     data class InsufficientQuantity(
-        val available: StashQuantity,
-        val requested: StashQuantity,
+        val available: StashMeasurement,
+        val requested: StashMeasurement,
     ) : ConsumeFromStashError
 
     data object MissingSnapshotWeight : ConsumeFromStashError
@@ -55,10 +57,10 @@ class ConsumeFromStashUseCase(
     suspend fun consume(
         itemId: StashItemId,
         mealId: Long,
-        amountEaten: StashQuantity,
+        amountEaten: StashMeasurement,
         dateOverride: LocalDate? = null,
     ): Result<FoodDiaryEntryId, ConsumeFromStashError> {
-        if (amountEaten.amount <= 0.0) {
+        if (amountEaten.measurement.rawValue <= 0.0) {
             return logger.logAndReturnFailure(
                 tag = TAG,
                 error = ConsumeFromStashError.NonPositiveAmount,
@@ -94,16 +96,16 @@ class ConsumeFromStashUseCase(
                     message = { "Amount $amountEaten is not supported for stash item ${item.id}." },
                 )
 
-            if (item.quantity.amount + EPSILON < plan.quantityChange.amount) {
+            if (item.measurement.measurement.rawValue + EPSILON < plan.measurementChange.measurement.rawValue) {
                 return@withTransaction logger.logAndReturnFailure(
                     tag = TAG,
                     error =
                         ConsumeFromStashError.InsufficientQuantity(
-                            available = item.quantity,
-                            requested = plan.quantityChange,
+                            available = item.measurement,
+                            requested = plan.measurementChange,
                         ),
                     message = {
-                        "Cannot consume ${plan.quantityChange.amount} from stash item ${item.id}; only ${item.quantity.amount} remains."
+                        "Cannot consume ${plan.measurementChange.measurement.rawValue} from stash item ${item.id}; only ${item.measurement.measurement.rawValue} remains."
                     },
                 )
             }
@@ -125,13 +127,13 @@ class ConsumeFromStashUseCase(
                     date = dateOverride ?: now.date,
                     food = item.snapshot.toDiaryFood(),
                     createdAt = now,
-            )
+                )
 
-            val remainingQuantity = (item.quantity - plan.quantityChange).normalize()
-            if (remainingQuantity.amount <= EPSILON && item.canDeleteWhenEmpty()) {
+            val remainingQuantity = (item.measurement - plan.measurementChange).normalize()
+            if (remainingQuantity.measurement.rawValue <= EPSILON && item.canDeleteWhenEmpty()) {
                 stashRepository.deleteItem(item.id)
             } else {
-                stashRepository.updateItem(item.copy(quantity = remainingQuantity))
+                stashRepository.updateItem(item.copy(measurement = remainingQuantity))
             }
 
             stashRepository.insertMovement(
@@ -139,7 +141,7 @@ class ConsumeFromStashUseCase(
                     stashId = item.stashId,
                     itemId = item.id,
                     operation = StashMovementOperation.DirectConsume,
-                    quantityChange = plan.quantityChange.negate(),
+                    measurementChange = plan.measurementChange.negate(),
                     linkedDiaryEntryId = LinkedDiaryEntryId(entryId.value),
                     createdAt = now,
                 )
@@ -149,55 +151,70 @@ class ConsumeFromStashUseCase(
         }
     }
 
-    private fun StashItem.planConsumption(requestedAmount: StashQuantity): ConsumptionPlan? =
+    private fun StashItem.planConsumption(requestedAmount: StashMeasurement): ConsumptionPlan? =
         when (val snapshot = snapshot) {
             is RawProductSnapshot -> rawProductPlan(requestedAmount)
-            is AnonymousDishSnapshot -> snapshot.anonymousDishPlan(quantity, requestedAmount)
+            is AnonymousDishSnapshot -> snapshot.anonymousDishPlan(measurement, requestedAmount)
         }
 
-    private fun StashItem.rawProductPlan(requestedAmount: StashQuantity): ConsumptionPlan? {
-        if (requestedAmount.unit != quantity.unit) {
+    private fun StashItem.rawProductPlan(requestedAmount: StashMeasurement): ConsumptionPlan? {
+        // Same type required — raw products only support same-type consumption.
+        if (requestedAmount.type != measurement.type) {
             return null
         }
 
-        val measurement = requestedAmount.toMeasurement()
-        return ConsumptionPlan(quantityChange = requestedAmount, measurement = measurement)
+        return ConsumptionPlan(measurementChange = requestedAmount, measurement = requestedAmount.measurement)
     }
 
     private fun AnonymousDishSnapshot.anonymousDishPlan(
-        availableQuantity: StashQuantity,
-        requestedAmount: StashQuantity,
+        availableMeasurement: StashMeasurement,
+        requestedAmount: StashMeasurement,
     ): ConsumptionPlan? {
-        if (requestedAmount.unit == availableQuantity.unit) {
-            val measurement = requestedAmount.toMeasurement()
-            return ConsumptionPlan(
-                quantityChange = requestedAmount,
-                measurement = measurement,
-            )
+        // Same-type: requested type matches available type — direct deduction.
+        if (requestedAmount.type == availableMeasurement.type) {
+            return ConsumptionPlan(measurementChange = requestedAmount, measurement = requestedAmount.measurement)
         }
 
-        if (availableQuantity.unit != StashQuantityUnit.Fraction) {
-            return null
+        // Cross-type consumption: dishes stored in servings/packages can be consumed in weight units.
+        // Weight is converted back to servings proportionally:
+        //   servingsConsumed = requestedWeight / totalWeight * totalAmount.rawValue
+        val weightType = when (requestedAmount.type) {
+            MeasurementType.Gram -> true
+            MeasurementType.Milliliter -> true
+            MeasurementType.Ounce -> true
+            MeasurementType.FluidOunce -> true
+            else -> false
         }
 
-        val expectedWeightUnit =
+        val canCrossConvert = when (availableMeasurement.type) {
+            MeasurementType.Serving -> true
+            MeasurementType.Package -> true
+            else -> false
+        }
+
+        if (!weightType || !canCrossConvert) {
+            return null // Unsupported cross-type combination.
+        }
+
+        // Liquid/solid constraint: liquid dishes only accept liquid weight, solid only solid weight.
+        val expectedWeightType =
             if (isLiquid) {
-                StashQuantityUnit.Milliliter
+                requestedAmount.type == MeasurementType.Milliliter || requestedAmount.type == MeasurementType.FluidOunce
             } else {
-                StashQuantityUnit.Gram
+                requestedAmount.type == MeasurementType.Gram || requestedAmount.type == MeasurementType.Ounce
             }
-        if (requestedAmount.unit != expectedWeightUnit) {
+        if (!expectedWeightType) {
             return null
         }
+
+        // Convert weight to servings proportionally.
+        val requestedWeight = requestedAmount.measurement.rawValue
+        val rawValueChange = totalAmount.rawValue * (requestedWeight / totalWeight)
+        val measurementChange = StashMeasurement(Measurement.from(availableMeasurement.type, rawValueChange))
 
         return ConsumptionPlan(
-            // Dish snapshots may be stored as fractions of a batch, so weight-based consumption is
-            // converted back into the persisted fraction for later reversal/rebalance logic.
-            quantityChange =
-                StashQuantity.fraction(
-                    totalAmount.amount * (requestedAmount.amount / totalWeight)
-                ),
-            measurement = requestedAmount.toMeasurement(),
+            measurementChange = measurementChange,
+            measurement = requestedAmount.measurement,
             requiresSnapshotWeight = true,
         )
     }
@@ -221,7 +238,7 @@ class ConsumeFromStashUseCase(
                     nutritionFacts = nutritionFacts,
                     servingWeight =
                         servingWeight.takeIf {
-                            totalAmount.unit == StashQuantityUnit.Fraction
+                            totalAmount.type == MeasurementType.Serving
                         },
                     totalWeight = totalWeight,
                     isLiquid = isLiquid,
@@ -245,17 +262,10 @@ class ConsumeFromStashUseCase(
         }
 
     private data class ConsumptionPlan(
-        val quantityChange: StashQuantity,
+        val measurementChange: StashMeasurement,
         val measurement: Measurement,
         val requiresSnapshotWeight: Boolean = false,
     )
-
-    private fun StashQuantity.normalize(): StashQuantity =
-        if (amount <= EPSILON) {
-            copy(amount = 0.0)
-        } else {
-            this
-        }
 
     private companion object {
         const val TAG = "ConsumeFromStashUseCase"

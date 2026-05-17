@@ -2,8 +2,8 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -51,11 +51,11 @@ class HomeStashRecipeSnapshotStateTest {
                 isLoading = false,
                 totalAmount = "250",
                 servingsMade = "4",
-                amountUnit = StashQuantityUnit.Gram,
-                availableUnits = listOf(StashQuantityUnit.Fraction, StashQuantityUnit.Gram),
+                amountUnit = MeasurementType.Gram,
+                availableUnits = listOf(MeasurementType.Serving, MeasurementType.Gram),
             )
 
-        assertEquals(StashQuantity.grams(250.0), state.parsedQuantity)
+        assertEquals(StashMeasurement.grams(250.0), state.parsedQuantity)
         assertTrue(state.canSave)
     }
 }

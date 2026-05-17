@@ -93,23 +93,15 @@ class LogRecipeToMealWithStashSubtractionUseCase(
                 )
 
             allocations.forEach { allocation ->
-                val remainingQuantity = allocation.item.quantity - allocation.quantity
-                val updatedItem =
-                    allocation.item.copy(
-                        quantity =
-                            if (remainingQuantity.amount <= EPSILON) {
-                                allocation.item.quantity.copy(amount = 0.0)
-                            } else {
-                                remainingQuantity
-                            },
-                    )
+                val remainingMeasurement = (allocation.item.measurement - allocation.measurement).normalize()
+                val updatedItem = allocation.item.copy(measurement = remainingMeasurement)
                 stashRepository.updateItem(updatedItem)
                 stashRepository.insertMovement(
                     StashMovement.new(
                         stashId = allocation.item.stashId,
                         itemId = allocation.item.id,
                         operation = StashMovementOperation.IngredientSubtract,
-                        quantityChange = allocation.quantity.negate(),
+                        measurementChange = allocation.measurement.negate(),
                         linkedDiaryEntryId = LinkedDiaryEntryId(entryId.value),
                         createdAt = now,
                     )
@@ -174,6 +166,5 @@ class LogRecipeToMealWithStashSubtractionUseCase(
 
     private companion object {
         const val TAG = "LogRecipeToMealWithStashSubtractionUseCase"
-        const val EPSILON = 0.000001
     }
 }

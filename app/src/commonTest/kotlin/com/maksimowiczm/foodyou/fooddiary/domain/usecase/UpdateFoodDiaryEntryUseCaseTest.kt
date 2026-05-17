@@ -9,7 +9,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeMealRepository
@@ -29,7 +29,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
     @Test
     fun when_entry_is_edited_down_then_linked_stash_quantity_is_restored() = runBlocking {
         val product = sampleProduct()
-        val item = sampleRawProductItem(quantity = StashQuantity.grams(0.0), product = product)
+        val item = sampleRawProductItem(measurement = StashMeasurement.grams(0.0), product = product)
         val entry = sampleFoodDiaryEntry(product = product, measurement = Measurement.Gram(200.0))
         val stashRepository =
             FakeStashRepository(
@@ -42,7 +42,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
                             stashId = item.stashId,
                             itemId = item.id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-200.0),
+                            measurementChange = StashMeasurement.grams(-200.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                             createdAt = FIXED_NOW,
                         )
@@ -61,13 +61,13 @@ class UpdateFoodDiaryEntryUseCaseTest {
 
         assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(result)
         assertEquals(Measurement.Gram(150.0), entryRepository.allEntries().single().measurement)
-        assertEquals(StashQuantity.grams(50.0), stashRepository.allItems().single().quantity)
+        assertEquals(StashMeasurement.grams(50.0), stashRepository.allItems().single().measurement)
         assertEquals(
             listOf(
-                StashQuantity.grams(-200.0),
-                StashQuantity.grams(50.0),
+                StashMeasurement.grams(-200.0),
+                StashMeasurement.grams(50.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange },
+            stashRepository.allMovements().map { it.measurementChange },
         )
         assertEquals(
             StashMovementOperation.AutoReversalOnEdit,
@@ -78,7 +78,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
     @Test
     fun when_entry_is_edited_up_then_additional_stash_quantity_is_consumed() = runBlocking {
         val product = sampleProduct()
-        val item = sampleRawProductItem(quantity = StashQuantity.grams(50.0), product = product)
+        val item = sampleRawProductItem(measurement = StashMeasurement.grams(50.0), product = product)
         val entry = sampleFoodDiaryEntry(product = product, measurement = Measurement.Gram(150.0))
         val stashRepository =
             FakeStashRepository(
@@ -91,7 +91,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
                             stashId = item.stashId,
                             itemId = item.id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-150.0),
+                            measurementChange = StashMeasurement.grams(-150.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                             createdAt = FIXED_NOW,
                         )
@@ -110,13 +110,13 @@ class UpdateFoodDiaryEntryUseCaseTest {
 
         assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(result)
         assertEquals(Measurement.Gram(200.0), entryRepository.allEntries().single().measurement)
-        assertEquals(StashQuantity.grams(0.0), stashRepository.allItems().single().quantity)
+        assertEquals(StashMeasurement.grams(0.0), stashRepository.allItems().single().measurement)
         assertEquals(
             listOf(
-                StashQuantity.grams(-150.0),
-                StashQuantity.grams(-50.0),
+                StashMeasurement.grams(-150.0),
+                StashMeasurement.grams(-50.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange },
+            stashRepository.allMovements().map { it.measurementChange },
         )
         assertEquals(
             StashMovementOperation.AutoReversalOnEdit,
@@ -138,7 +138,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
                             stashId = com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash().id,
                             itemId = com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem().id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-200.0),
+                            measurementChange = StashMeasurement.grams(-200.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                             createdAt = FIXED_NOW,
                         )
@@ -156,20 +156,20 @@ class UpdateFoodDiaryEntryUseCaseTest {
             )
 
         assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(result)
-        assertEquals(listOf(StashQuantity.grams(50.0)), stashRepository.allItems().map { it.quantity })
+        assertEquals(listOf(StashMeasurement.grams(50.0)), stashRepository.allItems().map { it.measurement })
         assertEquals(
             listOf(
-                StashQuantity.grams(-200.0),
-                StashQuantity.grams(50.0),
+                StashMeasurement.grams(-200.0),
+                StashMeasurement.grams(50.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange },
+            stashRepository.allMovements().map { it.measurementChange },
         )
     }
 
     @Test
-    fun when_entry_is_repeatedly_edited_down_then_only_incremental_quantity_is_restored() = runBlocking {
+    fun when_entry_is_repeatedly_edited_down_then_only_incremental_measurement_is_restored() = runBlocking {
         val product = sampleProduct()
-        val item = sampleRawProductItem(quantity = StashQuantity.grams(0.0), product = product)
+        val item = sampleRawProductItem(measurement = StashMeasurement.grams(0.0), product = product)
         val entry = sampleFoodDiaryEntry(product = product, measurement = Measurement.Gram(200.0))
         val stashRepository =
             FakeStashRepository(
@@ -182,7 +182,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
                             stashId = item.stashId,
                             itemId = item.id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-200.0),
+                            measurementChange = StashMeasurement.grams(-200.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                             createdAt = FIXED_NOW,
                         )
@@ -209,14 +209,14 @@ class UpdateFoodDiaryEntryUseCaseTest {
         assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(firstUpdate)
         assertIs<Success<Unit, UpdateFoodDiaryEntryError>>(secondUpdate)
         assertEquals(Measurement.Gram(100.0), entryRepository.allEntries().single().measurement)
-        assertEquals(StashQuantity.grams(100.0), stashRepository.allItems().single().quantity)
+        assertEquals(StashMeasurement.grams(100.0), stashRepository.allItems().single().measurement)
         assertEquals(
             listOf(
-                StashQuantity.grams(-200.0),
-                StashQuantity.grams(50.0),
-                StashQuantity.grams(50.0),
+                StashMeasurement.grams(-200.0),
+                StashMeasurement.grams(50.0),
+                StashMeasurement.grams(50.0),
             ),
-            stashRepository.allMovements().map { it.quantityChange },
+            stashRepository.allMovements().map { it.measurementChange },
         )
     }
 

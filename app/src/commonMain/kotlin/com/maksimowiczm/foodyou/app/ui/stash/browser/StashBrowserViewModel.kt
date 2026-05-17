@@ -2,13 +2,13 @@ package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.maksimowiczm.foodyou.app.ui.stash.toStashQuantityOrNull
+import com.maksimowiczm.foodyou.app.ui.stash.toStashMeasurementOrNull
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
-import com.maksimowiczm.foodyou.stash.domain.usecase.StashQuantityAdjustment
+import com.maksimowiczm.foodyou.stash.domain.usecase.StashMeasurementAdjustment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -157,11 +157,11 @@ internal class StashBrowserViewModel(
             }
 
             is StashBrowserActionDialog.ManualAdjust -> {
-                val quantity = dialog.item.quantityUnit.toQuantity(dialog.amount) ?: return
+                val quantity = dialog.item.quantityUnit.toMeasurement(dialog.amount) ?: return
                 val adjustment =
                     when (dialog.mode) {
-                        StashBrowserAdjustMode.ChangeBy -> StashQuantityAdjustment.ChangeBy(quantity)
-                        StashBrowserAdjustMode.SetTo -> StashQuantityAdjustment.SetTo(quantity)
+                        StashBrowserAdjustMode.ChangeBy -> StashMeasurementAdjustment.ChangeBy(quantity)
+                        StashBrowserAdjustMode.SetTo -> StashMeasurementAdjustment.SetTo(quantity)
                     }
                 browserActions.adjust(
                     itemId = dialog.item.id,
@@ -186,9 +186,9 @@ internal class StashBrowserViewModel(
         }
     }
 
-    private val StashBrowserItem.quantityUnit: StashQuantityUnit
-        get() = quantity.unit
+    private val StashBrowserItem.quantityUnit: MeasurementType
+        get() = quantity.type
 
-    private fun StashQuantityUnit.toQuantity(amountText: String) =
-        amountText.toStashQuantityOrNull(unit = this, requirePositive = false)
+    private fun MeasurementType.toMeasurement(amountText: String) =
+        amountText.toStashMeasurementOrNull(type = this, requirePositive = false)
 }

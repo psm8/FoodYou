@@ -3,13 +3,14 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.result.Result.Error
 import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -54,7 +55,7 @@ class CreateManualStashSnapshotUseCaseTest {
             assertEquals(success.data.stashId, stashRepository.allStashes().single().id)
             assertEquals(null, snapshot.productId)
             assertEquals("Quick yogurt", snapshot.name)
-            assertEquals(StashQuantity.grams(250.0), item.quantity)
+            assertEquals(StashMeasurement.grams(250.0), item.measurement)
             assertEquals(250.0, snapshot.totalWeight)
             assertEquals(100.0, snapshot.nutritionFacts.energy.value)
             assertEquals(10.0, snapshot.nutritionFacts.proteins.value)
@@ -92,12 +93,12 @@ class CreateManualStashSnapshotUseCaseTest {
             val item = stashRepository.allItems().single()
             val snapshot = assertIs<RawProductSnapshot>(item.snapshot)
 
-            assertEquals(StashQuantityUnit.Milliliter, item.quantity.unit)
-            assertEquals(236.58824, item.quantity.amount, 0.00001)
+            assertEquals(MeasurementType.Milliliter, item.measurement.type)
+            assertEquals(236.58824, item.measurement.measurement.rawValue, 0.00001)
             assertEquals(true, snapshot.isLiquid)
             val normalizedEnergy = assertNotNull(snapshot.nutritionFacts.energy.value)
             assertEquals(
-                80.0 / (item.quantity.amount / 100.0),
+                80.0 / (item.measurement.measurement.rawValue / 100.0),
                 normalizedEnergy,
                 0.00001,
             )

@@ -14,7 +14,7 @@ import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashError
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashUseCase
-import com.maksimowiczm.foodyou.stash.domain.usecase.toStashQuantityOrNull
+import com.maksimowiczm.foodyou.stash.domain.usecase.toStashMeasurementOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -196,7 +196,7 @@ private fun Product?.resolveSelectedMeasurement(
 ): Measurement =
     when {
         this == null -> Measurement.Gram(Measurement.Gram.DEFAULT)
-        initialMeasurement != null && toStashQuantityOrNull(initialMeasurement) != null ->
+        initialMeasurement != null && toStashMeasurementOrNull(initialMeasurement) != null ->
             initialMeasurement
         suggestions.isNotEmpty() -> suggestions.first()
         else -> defaultMeasurement()

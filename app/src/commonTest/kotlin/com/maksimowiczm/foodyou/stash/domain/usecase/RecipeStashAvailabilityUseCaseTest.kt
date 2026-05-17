@@ -4,7 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -40,12 +40,12 @@ class RecipeStashAvailabilityUseCaseTest {
                             listOf(
                                 sampleRawProductItem(
                                     id = 1,
-                                    quantity = StashQuantity.grams(250.0),
+                                    measurement = StashMeasurement.grams(250.0),
                                     product = flour,
                                 ),
                                 sampleRawProductItem(
                                     id = 2,
-                                    quantity = StashQuantity.milliliters(50.0),
+                                    measurement = StashMeasurement.milliliters(50.0),
                                     product = tomatoSauce,
                                 ),
                             ),

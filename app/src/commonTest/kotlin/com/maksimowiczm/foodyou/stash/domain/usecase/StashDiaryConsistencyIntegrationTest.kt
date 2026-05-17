@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
@@ -11,10 +12,10 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UpdateFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -71,7 +72,7 @@ class StashDiaryConsistencyIntegrationTest {
             assertEquals(10.0, snapshot.nutritionFacts.proteins.value)
             assertEquals(4.0, snapshot.nutritionFacts.carbohydrates.value)
             assertEquals(2.0, snapshot.nutritionFacts.fats.value)
-            assertEquals(StashQuantity.milliliters(300.0), item.quantity)
+            assertEquals(StashMeasurement.milliliters(300.0), item.measurement)
             assertEquals(StashMovementOperation.ManualQuickAdd, movement.operation)
         }
 
@@ -98,10 +99,10 @@ class StashDiaryConsistencyIntegrationTest {
             assertIs<com.maksimowiczm.foodyou.common.result.Result.Success<*, *>>(first)
             assertIs<com.maksimowiczm.foodyou.common.result.Result.Success<*, *>>(second)
             assertEquals(1, stashRepository.allItems().size)
-            assertEquals(StashQuantity.grams(200.0), stashRepository.allItems().single().quantity)
+            assertEquals(StashMeasurement.grams(200.0), stashRepository.allItems().single().measurement)
             assertEquals(
-                listOf(StashQuantity.grams(100.0), StashQuantity.grams(100.0)),
-                stashRepository.allMovements().map { it.quantityChange },
+                listOf(StashMeasurement.grams(100.0), StashMeasurement.grams(100.0)),
+                stashRepository.allMovements().map { it.measurementChange },
             )
         }
 
@@ -109,7 +110,7 @@ class StashDiaryConsistencyIntegrationTest {
     fun when_add_consume_and_edit_happen_rapidly_then_stash_state_stays_consistent() = runBlocking {
         val product = sampleProduct()
         val originalItem =
-            sampleRawProductItem(id = 1, quantity = StashQuantity.grams(500.0), product = product)
+            sampleRawProductItem(id = 1, measurement = StashMeasurement.grams(500.0), product = product)
         val linkedEntry =
             FoodDiaryEntry(
                 id = FoodDiaryEntryId(1),
@@ -130,7 +131,7 @@ class StashDiaryConsistencyIntegrationTest {
                 updatedAt = FIXED_NOW,
             )
         val rebalancedItem =
-            sampleRawProductItem(id = 2, quantity = StashQuantity.grams(0.0), product = product)
+            sampleRawProductItem(id = 2, measurement = StashMeasurement.grams(0.0), product = product)
         val stashRepository =
             FakeStashRepository(
                 initialStashes = listOf(sampleStash()),
@@ -142,7 +143,7 @@ class StashDiaryConsistencyIntegrationTest {
                             stashId = rebalancedItem.stashId,
                             itemId = rebalancedItem.id,
                             operation = StashMovementOperation.DirectConsume,
-                            quantityChange = StashQuantity.grams(-120.0),
+                            measurementChange = StashMeasurement.grams(-120.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(linkedEntry.id.value),
                             createdAt = FIXED_NOW,
                         )
@@ -196,7 +197,7 @@ class StashDiaryConsistencyIntegrationTest {
                     consumeUseCase.consume(
                         itemId = originalItem.id,
                         mealId = sampleMeal().id,
-                        amountEaten = StashQuantity.grams(150.0),
+                        amountEaten = StashMeasurement.grams(150.0),
                     )
                 },
                 async {
@@ -212,7 +213,7 @@ class StashDiaryConsistencyIntegrationTest {
 
         assertEquals(
             listOf(550.0, 60.0),
-            stashRepository.allItems().sortedBy { it.id.value }.map { it.quantity.amount },
+            stashRepository.allItems().sortedBy { it.id.value }.map { it.measurement.measurement.rawValue },
         )
         assertEquals(
             listOf(60.0, 150.0),

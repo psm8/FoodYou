@@ -26,11 +26,11 @@ import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberChipsDatePickerState
 import com.maksimowiczm.foodyou.common.compose.extension.add
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import kotlinx.coroutines.flow.collect
@@ -154,7 +154,7 @@ private fun ConsumeStashItemScreen(
                         value = state.amount,
                         onValueChange = onAmountChange,
                         label = { Text(stringResource(Res.string.label_action_amount)) },
-                        supportingText = { Text(state.remainingQuantity.unit.label()) },
+                        supportingText = { Text(state.remainingQuantity.type.label()) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         isError = state.error == ConsumeStashItemError.InvalidAmount,
@@ -212,12 +212,13 @@ private fun errorMessage(error: ConsumeStashItemError): String =
     }
 
 @Composable
-private fun StashQuantity.label(): String = displayLabel()
+private fun StashMeasurement.label(): String = displayLabel()
 
 @Composable
-private fun StashQuantityUnit.label(): String =
+private fun MeasurementType.label(): String =
     when (this) {
-        StashQuantityUnit.Gram -> stringResource(Res.string.unit_gram_short)
-        StashQuantityUnit.Milliliter -> stringResource(Res.string.unit_milliliter_short)
-        StashQuantityUnit.Fraction -> stringResource(Res.string.unit_stash_fraction_short)
+        MeasurementType.Gram -> stringResource(Res.string.unit_gram_short)
+        MeasurementType.Milliliter -> stringResource(Res.string.unit_milliliter_short)
+        MeasurementType.Serving -> stringResource(Res.string.unit_stash_fraction_short)
+        else -> stringResource(Res.string.unit_stash_fraction_short)
     }

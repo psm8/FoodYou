@@ -1,6 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.stash.browser
 
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
@@ -90,9 +90,9 @@ class StashBrowserStateTest {
             browserState(
                 items =
                     listOf(
-                        item(id = 1L, name = "Small", quantity = StashQuantity.grams(3.0)),
-                        item(id = 2L, name = "Large", quantity = StashQuantity.grams(10.0)),
-                        item(id = 3L, name = "Medium", quantity = StashQuantity.grams(7.0)),
+                        item(id = 1L, name = "Small", quantity = StashMeasurement.grams(3.0)),
+                        item(id = 2L, name = "Large", quantity = StashMeasurement.grams(10.0)),
+                        item(id = 3L, name = "Medium", quantity = StashMeasurement.grams(7.0)),
                     ),
             ).withSortOption(StashBrowserSortOption.QuantityDescending)
 
@@ -105,9 +105,9 @@ class StashBrowserStateTest {
             browserState(
                 items =
                     listOf(
-                        item(id = 1L, name = "Small", quantity = StashQuantity.grams(3.0)),
-                        item(id = 2L, name = "Large", quantity = StashQuantity.grams(10.0)),
-                        item(id = 3L, name = "Medium", quantity = StashQuantity.grams(7.0)),
+                        item(id = 1L, name = "Small", quantity = StashMeasurement.grams(3.0)),
+                        item(id = 2L, name = "Large", quantity = StashMeasurement.grams(10.0)),
+                        item(id = 3L, name = "Medium", quantity = StashMeasurement.grams(7.0)),
                     ),
             ).withSortOption(StashBrowserSortOption.QuantityAscending)
 
@@ -123,7 +123,7 @@ class StashBrowserStateTest {
     private fun item(
         id: Long = 1L,
         name: String,
-        quantity: StashQuantity = StashQuantity.grams(1.0),
+        quantity: StashMeasurement = StashMeasurement.grams(1.0),
         createdAt: kotlinx.datetime.LocalDateTime = FIXED_NOW,
     ): StashBrowserItem =
         StashBrowserItem(

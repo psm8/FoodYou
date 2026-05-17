@@ -11,15 +11,15 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
+import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
+import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.AdjustStashItemQuantityError
 import com.maksimowiczm.foodyou.stash.domain.usecase.AdjustStashItemQuantityUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import com.maksimowiczm.foodyou.stash.domain.usecase.MoveStashItemError
 import com.maksimowiczm.foodyou.stash.domain.usecase.RemoveStashItemError
 import com.maksimowiczm.foodyou.stash.domain.usecase.RemoveStashItemUseCase
-import com.maksimowiczm.foodyou.stash.domain.usecase.StashQuantityAdjustment
-import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
-import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.StashMeasurementAdjustment
 import kotlinx.coroutines.flow.first
 
 internal interface StashBrowserActions {
@@ -30,7 +30,7 @@ internal interface StashBrowserActions {
 
     suspend fun adjust(
         itemId: StashItemId,
-        adjustment: StashQuantityAdjustment,
+        adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
     ): Result<StashItem, AdjustStashItemQuantityError>
 
@@ -58,7 +58,7 @@ internal class DomainStashBrowserActions(
 
     override suspend fun adjust(
         itemId: StashItemId,
-        adjustment: StashQuantityAdjustment,
+        adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
     ): Result<StashItem, AdjustStashItemQuantityError> =
         adjustStashItemQuantityUseCase.adjust(itemId = itemId, adjustment = adjustment, action = action)
@@ -107,7 +107,7 @@ internal class DomainStashBrowserActions(
                     stashId = currentStash.id,
                     itemId = item.id,
                     operation = StashMovementOperation.ManualAdjust,
-                    quantityChange = item.quantity.negate(),
+                    measurementChange = item.measurement.negate(),
                     linkedDiaryEntryId = null,
                     createdAt = movedAt,
                     note = note,
@@ -118,7 +118,7 @@ internal class DomainStashBrowserActions(
                     stashId = targetStash.id,
                     itemId = item.id,
                     operation = StashMovementOperation.ManualAdjust,
-                    quantityChange = item.quantity,
+                    measurementChange = item.measurement,
                     linkedDiaryEntryId = null,
                     createdAt = movedAt,
                     note = note,

@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
@@ -14,10 +15,10 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -112,15 +113,15 @@ class CreateManualStashSnapshotUseCase(
                                 barcode = null,
                                 note = null,
                                 isLiquid = intake.isLiquid,
-                                packageWeight = intake.canonicalQuantity.amount,
+                                packageWeight = intake.canonicalQuantity.measurement.rawValue,
                                 servingWeight = null,
                                 source = FoodSource(type = FoodSource.Type.User),
                                 nutritionFacts =
                                     nutritionFacts.normalizeForStashAmount(
-                                        amount = intake.canonicalQuantity.amount
+                                        amount = intake.canonicalQuantity.measurement.rawValue
                                     ),
                             ),
-                        quantity = intake.canonicalQuantity,
+                        measurement = intake.canonicalQuantity,
                         createdAt = now,
                     )
                 )
@@ -130,7 +131,7 @@ class CreateManualStashSnapshotUseCase(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.ManualQuickAdd,
-                    quantityChange = intake.canonicalQuantity,
+                    measurementChange = intake.canonicalQuantity,
                     linkedDiaryEntryId = null,
                     createdAt = now,
                 )
@@ -147,28 +148,28 @@ class CreateManualStashSnapshotUseCase(
             is Measurement.Gram ->
                 value.takeIf { it > 0.0 }?.let {
                     ManualQuickAddIntake(
-                        canonicalQuantity = StashQuantity.grams(it),
+                        canonicalQuantity = StashMeasurement.grams(it),
                         isLiquid = false,
                     )
                 }
             is Measurement.Ounce ->
                 metric.takeIf { it > 0.0 }?.let {
                     ManualQuickAddIntake(
-                        canonicalQuantity = StashQuantity.grams(it),
+                        canonicalQuantity = StashMeasurement.grams(it),
                         isLiquid = false,
                     )
                 }
             is Measurement.Milliliter ->
                 value.takeIf { it > 0.0 }?.let {
                     ManualQuickAddIntake(
-                        canonicalQuantity = StashQuantity.milliliters(it),
+                        canonicalQuantity = StashMeasurement.milliliters(it),
                         isLiquid = true,
                     )
                 }
             is Measurement.FluidOunce ->
                 metric.takeIf { it > 0.0 }?.let {
                     ManualQuickAddIntake(
-                        canonicalQuantity = StashQuantity.milliliters(it),
+                        canonicalQuantity = StashMeasurement.milliliters(it),
                         isLiquid = true,
                     )
                 }
@@ -177,7 +178,7 @@ class CreateManualStashSnapshotUseCase(
         }
 
     private data class ManualQuickAddIntake(
-        val canonicalQuantity: StashQuantity,
+        val canonicalQuantity: StashMeasurement,
         val isLiquid: Boolean,
     )
 
@@ -186,3 +187,4 @@ class CreateManualStashSnapshotUseCase(
         const val DEFAULT_STASH_NAME = "Stash"
     }
 }
+

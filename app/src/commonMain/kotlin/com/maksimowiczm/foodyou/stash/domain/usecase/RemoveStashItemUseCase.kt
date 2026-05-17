@@ -2,15 +2,17 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -42,22 +44,21 @@ class RemoveStashItemUseCase(
                 )
             }
 
-            val updatedItem = item.copy(quantity = StashQuantity(0.0, item.quantity.unit))
             stashRepository.deleteItem(item.id)
-            if (item.quantity.amount > 0.0) {
+            if (item.measurement.measurement.rawValue > 0.0) {
                 stashRepository.insertMovement(
                     StashMovement.new(
                         stashId = item.stashId,
                         itemId = item.id,
                         operation = StashMovementOperation.ManualAdjust,
-                        quantityChange = item.quantity.negate(),
+                        measurementChange = item.measurement.negate(),
                         linkedDiaryEntryId = null,
                         createdAt = dateProvider.now(),
                         note = action.toMovementNote(),
                     )
                 )
             }
-            Ok(updatedItem)
+            Ok(item)
         }
     }
 

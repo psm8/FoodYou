@@ -62,7 +62,7 @@ class ConfirmShoppingSessionUseCase(
                                 StashItem.new(
                                     stashId = stash.id,
                                     snapshot = item.snapshot,
-                                    quantity = item.quantity,
+                                    measurement = item.measurement,
                                     createdAt = now,
                                 )
                             )
@@ -71,7 +71,7 @@ class ConfirmShoppingSessionUseCase(
                                 stashId = stash.id,
                                 itemId = itemId,
                                 operation = StashMovementOperation.Purchase,
-                                quantityChange = item.quantity,
+                                measurementChange = item.measurement,
                                 linkedDiaryEntryId = null,
                                 createdAt = now,
                             )

@@ -55,8 +55,8 @@ class AddProductToStashUseCase(
             )
         }
 
-        val canonicalQuantity = product.toStashQuantityOrNull(measurement)
-        if (canonicalQuantity == null) {
+        val stashMeasurement = product.toStashMeasurementOrNull(measurement)
+        if (stashMeasurement == null) {
             return logger.logAndReturnFailure(
                 tag = TAG,
                 error = AddProductToStashError.InvalidMeasurement,
@@ -104,23 +104,25 @@ class AddProductToStashUseCase(
 
             val existingItem =
                 stashRepository.observeStashContents(targetStash.id).first().firstOrNull {
-                    it.snapshot is RawProductSnapshot && it.snapshot.productId == product.id
+                    it.snapshot is RawProductSnapshot &&
+                        it.snapshot.productId == product.id &&
+                        it.measurement.type == stashMeasurement.type
                 }
-            val mergeCandidate = existingItem?.takeIf { it.quantity.unit == canonicalQuantity.unit }
+            val mergeCandidate = existingItem
             val itemId =
                 if (mergeCandidate == null) {
                     stashRepository.insertItem(
                         StashItem.new(
                             stashId = targetStash.id,
                             snapshot = RawProductSnapshot.from(product),
-                            quantity = canonicalQuantity,
+                            measurement = stashMeasurement,
                             createdAt = now,
                         )
                     )
                 } else {
                     stashRepository.updateItem(
                         mergeCandidate.copy(
-                            quantity = mergeCandidate.quantity + canonicalQuantity,
+                            measurement = mergeCandidate.measurement + stashMeasurement,
                         )
                     )
                     mergeCandidate.id
@@ -130,7 +132,7 @@ class AddProductToStashUseCase(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.Purchase,
-                    quantityChange = canonicalQuantity,
+                    measurementChange = stashMeasurement,
                     linkedDiaryEntryId = null,
                     createdAt = now,
                 )

@@ -1,10 +1,11 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
 import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +31,7 @@ data class HomeStashSummaryItem(
     val name: String,
     val stashId: StashDefinitionId,
     val stashName: String,
-    val quantity: StashQuantity,
+    val measurement: StashMeasurement,
     val createdAt: LocalDateTime,
 )
 
@@ -69,7 +70,8 @@ internal fun buildHomeStashSummary(
     recentItemLimit: Int = 5,
 ): HomeStashSummary? {
     val normalizedRecentItemLimit = recentItemLimit.coerceIn(3, 5)
-    val availableItemsByStash = itemsByStash.map { items -> items.filter { it.quantity.amount > 0.0 } }
+    val availableItemsByStash =
+        itemsByStash.map { items -> items.filter { it.measurement.measurement.rawValue > 0.0 } }
     val stashSummaries =
         stashes.mapIndexed { index, stash ->
             HomeStashSummaryStash(
@@ -88,7 +90,7 @@ internal fun buildHomeStashSummary(
                         name = item.snapshot.name,
                         stashId = stash.id,
                         stashName = stash.name.value,
-                        quantity = item.quantity,
+                        measurement = item.measurement,
                         createdAt = item.createdAt,
                     )
                 }
@@ -109,3 +111,4 @@ internal fun buildHomeStashSummary(
         recentItems = recentItems,
     )
 }
+

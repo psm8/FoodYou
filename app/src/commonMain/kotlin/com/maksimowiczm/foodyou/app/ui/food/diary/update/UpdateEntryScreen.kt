@@ -48,7 +48,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import org.jetbrains.compose.resources.stringResource
@@ -103,9 +103,9 @@ fun UpdateEntryScreen(
         val returnableQuantity =
             if (selectedWeight < entry.weight) {
                 if (entry.food.isLiquid) {
-                    StashQuantity.milliliters(entry.weight - selectedWeight)
+                    StashMeasurement.milliliters(entry.weight - selectedWeight)
                 } else {
-                    StashQuantity.grams(entry.weight - selectedWeight)
+                    StashMeasurement.grams(entry.weight - selectedWeight)
                 }
             } else {
                 null
@@ -172,7 +172,7 @@ private fun UpdateEntryScreen(
     onReturnRemainderToStash: () -> Unit,
     state: FoodMeasurementFormState,
     entry: FoodDiaryEntry,
-    returnableQuantity: StashQuantity?,
+    returnableQuantity: StashMeasurement?,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {

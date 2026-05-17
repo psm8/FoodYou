@@ -1,9 +1,10 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Success
 import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -29,7 +30,7 @@ class CreateAnonymousDishSnapshotUseCaseTest {
             useCase.create(
                 recipeId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(1),
                 stashId = sampleStash().id,
-                totalAmount = StashQuantity.fraction(2.0),
+                totalAmount = StashMeasurement.servings(2.0),
                 servings = 8,
             )
 
@@ -38,7 +39,7 @@ class CreateAnonymousDishSnapshotUseCaseTest {
         assertEquals(1L, success.data.itemId.value)
         val snapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
         assertEquals(800.0, snapshot.totalWeight)
-        assertEquals(StashQuantity.fraction(2.0), snapshot.totalAmount)
+        assertEquals(Measurement.Serving(2.0), snapshot.totalAmount)
         assertEquals(recipeRepository.observeRecipe(com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(1)).first()!!.nutritionFacts, snapshot.nutritionFacts)
         assertEquals(StashMovementOperation.CreateSnapshot, stashRepository.allMovements().single().operation)
 
@@ -68,7 +69,7 @@ class CreateAnonymousDishSnapshotUseCaseTest {
         val result =
             useCase.create(
                 recipeId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(1),
-                totalAmount = StashQuantity.fraction(2.0),
+                totalAmount = StashMeasurement.servings(2.0),
                 servings = 4,
             )
 
@@ -95,14 +96,14 @@ class CreateAnonymousDishSnapshotUseCaseTest {
             useCase.create(
                 recipeId = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(1),
                 stashId = sampleStash().id,
-                totalAmount = StashQuantity.grams(250.0),
+                totalAmount = StashMeasurement.grams(250.0),
                 servings = 8,
             )
 
         val success = assertIs<Success<CreateAnonymousDishSnapshotResult, CreateAnonymousDishSnapshotError>>(result)
         assertEquals(sampleStash().id, success.data.stashId)
         val snapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(StashQuantity.grams(250.0), snapshot.totalAmount)
+        assertEquals(Measurement.Gram(250.0), snapshot.totalAmount)
         assertEquals(250.0, snapshot.totalWeight)
     }
 }
