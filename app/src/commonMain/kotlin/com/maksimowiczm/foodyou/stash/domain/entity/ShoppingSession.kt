@@ -96,14 +96,4 @@ private fun Measurement.mergeWith(other: Measurement, mergedQuantity: StashQuant
     return mergedQuantity.toMeasurement()
 }
 
-private fun Measurement.scaleToQuantityOrFallback(
-    previousQuantity: StashQuantity,
-    updatedQuantity: StashQuantity,
-): Measurement {
-    if (previousQuantity.amount <= 0.0) {
-        return updatedQuantity.toMeasurement()
-    }
 
-    val ratio = updatedQuantity.amount / previousQuantity.amount
-    return Measurement.from(type, rawValue * ratio)
-}

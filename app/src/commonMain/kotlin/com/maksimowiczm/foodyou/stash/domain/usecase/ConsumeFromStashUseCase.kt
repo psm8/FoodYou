@@ -22,6 +22,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantity
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
+import com.maksimowiczm.foodyou.stash.domain.entity.toMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDate
@@ -159,7 +160,7 @@ class ConsumeFromStashUseCase(
             return null
         }
 
-        val measurement = requestedAmount.toMeasurement() ?: return null
+        val measurement = requestedAmount.toMeasurement()
         return ConsumptionPlan(quantityChange = requestedAmount, measurement = measurement)
     }
 
@@ -168,7 +169,7 @@ class ConsumeFromStashUseCase(
         requestedAmount: StashQuantity,
     ): ConsumptionPlan? {
         if (requestedAmount.unit == availableQuantity.unit) {
-            val measurement = requestedAmount.toMeasurement() ?: return null
+            val measurement = requestedAmount.toMeasurement()
             return ConsumptionPlan(
                 quantityChange = requestedAmount,
                 measurement = measurement,
@@ -196,17 +197,10 @@ class ConsumeFromStashUseCase(
                 StashQuantity.fraction(
                     totalAmount.amount * (requestedAmount.amount / totalWeight)
                 ),
-            measurement = requestedAmount.toMeasurement() ?: return null,
+            measurement = requestedAmount.toMeasurement(),
             requiresSnapshotWeight = true,
         )
     }
-
-    private fun StashQuantity.toMeasurement(): Measurement? =
-        when (unit) {
-            StashQuantityUnit.Gram -> Measurement.Gram(amount)
-            StashQuantityUnit.Milliliter -> Measurement.Milliliter(amount)
-            StashQuantityUnit.Fraction -> Measurement.Serving(amount)
-        }
 
     private fun com.maksimowiczm.foodyou.stash.domain.entity.StashSnapshot.toDiaryFood(): DiaryFood =
         when (this) {

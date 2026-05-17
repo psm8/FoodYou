@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashQuantityUnit
 
@@ -35,7 +34,5 @@ data class StashMovementEntity(
     val quantityUnit: StashQuantityUnit,
     val linkedDiaryEntryId: Long?,
     val note: String?,
-    val rawMeasurementType: MeasurementType?,
-    val rawMeasurementValue: Double?,
     val createdAtEpochSeconds: Long,
 )

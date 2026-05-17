@@ -205,16 +205,6 @@ class ShoppingSessionUseCaseTest {
             stashRepository.allItems().map { it.quantity },
         )
         assertEquals(
-            listOf(
-                Measurement.Package(1.5),
-                Measurement.Gram(500.0),
-                Measurement.Serving(1.0),
-                Measurement.Gram(80.0),
-                Measurement.Package(0.75),
-            ),
-            stashRepository.allItems().map { it.measurement },
-        )
-        assertEquals(
             List(5) { StashMovementOperation.Purchase },
             stashRepository.allMovements().map { it.operation },
         )

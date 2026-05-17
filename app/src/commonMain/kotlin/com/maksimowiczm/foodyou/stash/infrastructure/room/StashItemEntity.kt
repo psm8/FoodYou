@@ -5,7 +5,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import com.maksimowiczm.foodyou.common.infrastructure.room.Minerals
 import com.maksimowiczm.foodyou.common.infrastructure.room.Nutrients
@@ -32,10 +31,6 @@ data class StashItemEntity(
     val quantity: Double,
     val baseUnit: StashQuantityUnit,
     val createdAtEpochSeconds: Long,
-    val measurementType: MeasurementType?,
-    val measurementRawValue: Double?,
-    val rawMeasurementType: MeasurementType?,
-    val rawMeasurementValue: Double?,
     val snapshotProductId: Long?,
     val snapshotName: String,
     val snapshotNote: String?,

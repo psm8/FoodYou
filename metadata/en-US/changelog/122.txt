@@ -1,0 +1,10 @@
+New features
+- Added the Stash module for managing ingredients and pantry stock.
+- Added shopping sessions plus home quick-add and recipe snapshot shortcuts for Stash.
+
+Changes
+- Integrated Stash with recipe and food diary flows to keep tracked quantities aligned.
+- Added Stash settings and home screen personalization support.
+
+Bug fixes
+- Improved quantity handling robustness across stash adjustments and shopping confirmation.

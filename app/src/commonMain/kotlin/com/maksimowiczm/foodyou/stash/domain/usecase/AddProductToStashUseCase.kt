@@ -115,14 +115,12 @@ class AddProductToStashUseCase(
                             snapshot = RawProductSnapshot.from(product),
                             quantity = canonicalQuantity,
                             createdAt = now,
-                            rawMeasurement = measurement,
                         )
                     )
                 } else {
                     stashRepository.updateItem(
                         mergeCandidate.copy(
                             quantity = mergeCandidate.quantity + canonicalQuantity,
-                            rawMeasurement = measurement,
                         )
                     )
                     mergeCandidate.id
@@ -135,7 +133,6 @@ class AddProductToStashUseCase(
                     quantityChange = canonicalQuantity,
                     linkedDiaryEntryId = null,
                     createdAt = now,
-                    rawMeasurement = measurement,
                 )
             )
 

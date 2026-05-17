@@ -133,7 +133,6 @@ class CreateManualStashSnapshotUseCase(
                     quantityChange = intake.canonicalQuantity,
                     linkedDiaryEntryId = null,
                     createdAt = now,
-                    rawMeasurement = measurement,
                 )
             )
 

@@ -1,6 +1,9 @@
 package com.maksimowiczm.foodyou.stash.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 
 enum class StashQuantityUnit {
     Gram,
@@ -48,3 +51,15 @@ fun StashQuantity.toMeasurement(): Measurement =
         StashQuantityUnit.Milliliter -> Measurement.Milliliter(amount)
         StashQuantityUnit.Fraction -> Measurement.Serving(amount)
     }
+
+fun Measurement.scaleToQuantityOrFallback(
+    previousQuantity: StashQuantity,
+    updatedQuantity: StashQuantity,
+): Measurement {
+    if (previousQuantity.amount <= 0.0) {
+        return updatedQuantity.toMeasurement()
+    }
+
+    val ratio = updatedQuantity.amount / previousQuantity.amount
+    return Measurement.from(type, rawValue * ratio)
+}

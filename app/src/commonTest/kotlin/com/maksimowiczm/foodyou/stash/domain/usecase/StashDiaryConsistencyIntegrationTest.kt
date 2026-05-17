@@ -73,7 +73,6 @@ class StashDiaryConsistencyIntegrationTest {
             assertEquals(2.0, snapshot.nutritionFacts.fats.value)
             assertEquals(StashQuantity.milliliters(300.0), item.quantity)
             assertEquals(StashMovementOperation.ManualQuickAdd, movement.operation)
-            assertEquals(Measurement.Milliliter(300.0), movement.rawMeasurement)
         }
 
     @Test
@@ -100,14 +99,6 @@ class StashDiaryConsistencyIntegrationTest {
             assertIs<com.maksimowiczm.foodyou.common.result.Result.Success<*, *>>(second)
             assertEquals(1, stashRepository.allItems().size)
             assertEquals(StashQuantity.grams(200.0), stashRepository.allItems().single().quantity)
-            assertEquals(
-                Measurement.Serving(1.0),
-                stashRepository.allItems().single().rawMeasurement,
-            )
-            assertEquals(
-                listOf(Measurement.Gram(100.0), Measurement.Serving(1.0)),
-                stashRepository.allMovements().map { it.rawMeasurement },
-            )
             assertEquals(
                 listOf(StashQuantity.grams(100.0), StashQuantity.grams(100.0)),
                 stashRepository.allMovements().map { it.quantityChange },

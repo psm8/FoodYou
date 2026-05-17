@@ -2,10 +2,6 @@ package com.maksimowiczm.foodyou.stash.infrastructure.repository
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
-import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
-import com.maksimowiczm.foodyou.common.domain.measurement.from
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
-import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.infrastructure.room.toDomain
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntityNutrients
@@ -163,12 +159,6 @@ private fun StashItemEntity.toModel(): StashItem =
             },
         quantity = StashQuantity(amount = quantity, unit = baseUnit),
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
-        rawMeasurement =
-            if (rawMeasurementType != null && rawMeasurementValue != null) {
-                Measurement.from(type = rawMeasurementType, rawValue = rawMeasurementValue)
-            } else {
-                null
-            },
     )
 
 private fun StashItem.toEntity(): StashItemEntity {
@@ -183,10 +173,6 @@ private fun StashItem.toEntity(): StashItemEntity {
                 quantity = quantity.amount,
                 baseUnit = quantity.unit,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
-                measurementType = measurement?.type,
-                measurementRawValue = measurement?.rawValue,
-                rawMeasurementType = rawMeasurement?.type,
-                rawMeasurementValue = rawMeasurement?.rawValue,
                 snapshotProductId = snapshot.productId?.id,
                 snapshotName = snapshot.name,
                 snapshotNote = snapshot.note,
@@ -212,10 +198,6 @@ private fun StashItem.toEntity(): StashItemEntity {
                 quantity = quantity.amount,
                 baseUnit = quantity.unit,
                 createdAtEpochSeconds = createdAt.toEpochSeconds(),
-                measurementType = measurement?.type,
-                measurementRawValue = measurement?.rawValue,
-                rawMeasurementType = rawMeasurement?.type,
-                rawMeasurementValue = rawMeasurement?.rawValue,
                 snapshotProductId = null,
                 snapshotName = snapshot.name,
                 snapshotNote = snapshot.note,
@@ -245,12 +227,6 @@ private fun StashMovementEntity.toModel(): StashMovement =
         linkedDiaryEntryId = linkedDiaryEntryId?.let(::LinkedDiaryEntryId),
         note = note,
         createdAt = createdAtEpochSeconds.toLocalDateTime(),
-        rawMeasurement =
-            if (rawMeasurementType != null && rawMeasurementValue != null) {
-                Measurement.from(type = rawMeasurementType, rawValue = rawMeasurementValue)
-            } else {
-                null
-            },
     )
 
 private fun StashMovement.toEntity(): StashMovementEntity =
@@ -263,8 +239,6 @@ private fun StashMovement.toEntity(): StashMovementEntity =
         quantityUnit = quantityChange.unit,
         linkedDiaryEntryId = linkedDiaryEntryId?.value,
         note = note,
-        rawMeasurementType = rawMeasurement?.type,
-        rawMeasurementValue = rawMeasurement?.rawValue,
         createdAtEpochSeconds = createdAt.toEpochSeconds(),
     )
 
