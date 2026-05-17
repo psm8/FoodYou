@@ -2,8 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.sum
-import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
-import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -17,10 +16,10 @@ data class ShoppingSessionItem(
     val id: ShoppingSessionItemId,
     val productId: FoodId.Product,
     val snapshot: RawProductSnapshot,
-    val measurement: Measurement,
-    val quantity: StashQuantity,
+    val measurement: StashMeasurement,
 ) {
-    val totalNutritionFacts: NutritionFacts = snapshot.nutritionFacts * (quantity.amount / 100.0)
+    val totalNutritionFacts: NutritionFacts =
+        snapshot.nutritionFacts * (measurement.measurement.rawValue / 100.0)
 }
 
 data class ShoppingSession(
@@ -34,10 +33,12 @@ data class ShoppingSession(
     fun add(
         productId: FoodId.Product,
         snapshot: RawProductSnapshot,
-        measurement: Measurement,
-        quantity: StashQuantity,
+        measurement: StashMeasurement,
     ): ShoppingSession {
-        val existingItem = items.firstOrNull { it.productId == productId }
+        val existingItem =
+            items.firstOrNull {
+                it.productId == productId && it.measurement.type == measurement.type
+            }
         if (existingItem == null) {
             return copy(
                 items =
@@ -47,7 +48,6 @@ data class ShoppingSession(
                             productId = productId,
                             snapshot = snapshot,
                             measurement = measurement,
-                            quantity = quantity,
                         )
             )
         }
@@ -56,11 +56,7 @@ data class ShoppingSession(
             items =
                 items.map { item ->
                     if (item.id == existingItem.id) {
-                        item.copy(
-                            measurement =
-                                item.measurement.mergeWith(measurement, item.quantity + quantity),
-                            quantity = item.quantity + quantity,
-                        )
+                        item.copy(measurement = item.measurement + measurement)
                     } else {
                         item
                     }
@@ -68,32 +64,17 @@ data class ShoppingSession(
         )
     }
 
-    fun updateQuantity(itemId: ShoppingSessionItemId, quantity: StashQuantity): ShoppingSession =
+    fun updateQuantity(itemId: ShoppingSessionItemId, measurement: StashMeasurement): ShoppingSession =
         copy(
             items =
                 items.map { item ->
                     if (item.id == itemId) {
-                        item.copy(
-                            quantity = quantity,
-                            measurement =
-                                item.measurement.scaleToQuantityOrFallback(
-                                    previousQuantity = item.quantity,
-                                    updatedQuantity = quantity,
-                                ),
-                        )
+                        item.copy(measurement = measurement)
                     } else {
                         item
                     }
                 }
         )
-}
-
-private fun Measurement.mergeWith(other: Measurement, mergedQuantity: StashQuantity): Measurement {
-    if (type == other.type) {
-        return Measurement.from(type, rawValue + other.rawValue)
-    }
-
-    return mergedQuantity.toMeasurement()
 }
 
 
