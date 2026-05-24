@@ -346,4 +346,84 @@ class LogRecipeToMealWithStashSubtractionUseCaseTest {
             movement.measurementChange.negate(),
         )
     }
+
+    @Test
+    fun when_direct_sub_recipe_stash_entry_uses_servings_then_weight_requirement_subtracts_recipe_entry() = runBlocking {
+        val flour = sampleProduct(id = 1, name = "Flour", brand = null)
+        val dough =
+            Recipe(
+                id = FoodId.Recipe(9),
+                name = "Prepared dough",
+                servings = 2,
+                ingredients = listOf(RecipeIngredient(flour, Measurement.Gram(400.0))),
+                note = null,
+                isLiquid = false,
+            )
+        val parentRecipe =
+            Recipe(
+                id = FoodId.Recipe(10),
+                name = "Pizza",
+                servings = 2,
+                ingredients = listOf(RecipeIngredient(dough, Measurement.Gram(200.0))),
+                note = null,
+                isLiquid = false,
+            )
+        val stashRepository =
+            FakeStashRepository(
+                initialStashes = listOf(sampleStash()),
+                initialItems =
+                    listOf(
+                        sampleAnonymousDishItem(
+                            id = 1,
+                            measurement = StashMeasurement.servings(1.0),
+                            recipe = dough,
+                            totalAmount = Measurement.Serving(2.0),
+                            servingsMade = 2,
+                        ),
+                        sampleRawProductItem(
+                            id = 2,
+                            measurement = StashMeasurement.grams(500.0),
+                            product = flour,
+                        ),
+                    ),
+            )
+        val diaryRepository = FakeFoodDiaryEntryRepository()
+        val useCase =
+            LogRecipeToMealWithStashSubtractionUseCase(
+                recipeRepository = FakeRecipeRepository(listOf(parentRecipe, dough)),
+                entryRepository = diaryRepository,
+                mealRepository = FakeMealRepository(listOf(sampleMeal())),
+                stashRepository = stashRepository,
+                stashOwnerProvider = localOwnerProvider(),
+                transactionProvider = FakeTransactionProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.log(
+                recipeId = parentRecipe.id,
+                measurement = Measurement.Serving(2.0),
+                mealId = sampleMeal().id,
+                date = FIXED_NOW.date,
+                subtractMode = StashSubtractionMode.Auto,
+            )
+
+        val success =
+            assertIs<
+                Success<LogRecipeToMealWithStashSubtractionResult, LogRecipeToMealWithStashSubtractionError>
+            >(result)
+        assertEquals(true, success.data.availability.areAllIngredientsAvailable)
+        assertEquals(
+            listOf(
+                StashMeasurement.servings(0.0),
+                StashMeasurement.grams(500.0),
+            ),
+            stashRepository.allItems().sortedBy { it.id.value }.map { it.measurement },
+        )
+        val movement = stashRepository.allMovements().single()
+        assertEquals(1L, movement.itemId.value)
+        assertEquals(StashMeasurement.servings(1.0), movement.measurementChange.negate())
+        assertEquals("Pizza", diaryRepository.allEntries().single().food.name)
+    }
 }
