@@ -290,7 +290,7 @@ On confirm, `ConfirmShoppingSessionUseCase` persists each draft item as a `Stash
 
 ### Room schema
 
-`FoodYouDatabase` version `34` includes the stash schema and converters:
+`FoodYouDatabase` version `33` includes the stash schema and converters:
 
 - `MeasurementTypeConverter`
 - `StashMovementOperationTypeConverter`
@@ -347,15 +347,15 @@ open an outer transaction so diary writes and stash writes commit together.
 
 ### Migration notes
 
-`StashMeasurementMigration` performs the `33 -> 34` refactor from frozen inline metadata to live
-food references:
+`StashCoreMigration` performs the `32 -> 33` stash introduction using the shipped live-reference
+schema directly:
 
-- The old schema did not store recipe IDs for legacy recipe-style stash rows, so those rows cannot
-  be migrated into true recipe references.
-- Instead, legacy recipe-style rows and orphaned product references are healed into synthetic user
-  products and then mapped to `StashFoodRef.Product`.
-- Duplicate product rows are merged before the new unique indices are created.
-- `StashMovement.itemId` values are remapped to the surviving `StashEntry` rows after merge.
+- `StashEntry` is created with `foodProductId` / `foodRecipeId` foreign keys and recipe batch
+  context columns from the start.
+- The unique indices on `(stashId, foodProductId, measurementType)` and
+  `(stashId, foodRecipeId, measurementType)` ship as part of the initial stash schema.
+- No snapshot-era stash schema is shipped, so there is no follow-up stash-table data migration for
+  released users.
 
 Representative migration tests:
 

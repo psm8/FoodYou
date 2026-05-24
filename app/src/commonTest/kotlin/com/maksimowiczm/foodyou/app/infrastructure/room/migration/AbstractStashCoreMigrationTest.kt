@@ -14,6 +14,68 @@ abstract class AbstractStashCoreMigrationTest {
         helper.createDatabase(32).close()
 
         helper.runMigrationsAndValidate(33, listOf(StashCoreMigration)).use { connection ->
+            connection.prepare("SELECT COUNT(*) FROM StashEntry").use { statement ->
+                statement.step()
+                assertEquals(0L, statement.getLong(0))
+            }
+            connection.prepare(
+                """
+                SELECT COUNT(*)
+                FROM sqlite_master
+                WHERE type = 'table'
+                  AND name = 'StashItem'
+                """
+                    .trimIndent()
+            ).use { statement ->
+                statement.step()
+                assertEquals(0L, statement.getLong(0))
+            }
+
+            val stashEntryColumns = tableInfo(connection, "StashEntry")
+            assertTrue(
+                stashEntryColumns.containsAll(
+                    listOf(
+                        "id",
+                        "stashId",
+                        "rawValue",
+                        "measurementType",
+                        "createdAtEpochSeconds",
+                        "foodProductId",
+                        "foodRecipeId",
+                        "batchTotalWeight",
+                        "batchTotalAmount",
+                        "batchTotalAmountType",
+                    )
+                )
+            )
+            assertFalse("snapshotType" in stashEntryColumns)
+
+            val stashEntryIndices = indexNames(connection, "StashEntry")
+            assertTrue(
+                stashEntryIndices.containsAll(
+                    listOf(
+                        "index_StashEntry_stashId",
+                        "index_StashEntry_stashId_foodProductId_measurementType",
+                        "index_StashEntry_stashId_foodRecipeId_measurementType",
+                    )
+                )
+            )
+
+            val stashEntryForeignKeys = foreignKeys(connection, "StashEntry")
+            assertTrue(
+                stashEntryForeignKeys.containsAll(
+                    setOf(
+                        "stashId->StashDefinition",
+                        "foodProductId->Product",
+                        "foodRecipeId->Recipe",
+                    )
+                )
+            )
+            assertEquals(
+                setOf("stashId->StashDefinition"),
+                foreignKeys(connection, "StashMovement"),
+            )
+
             connection.execSQL(
                 """
                 INSERT INTO Product (id, name, sourceType, isLiquid)
@@ -30,47 +92,19 @@ abstract class AbstractStashCoreMigrationTest {
             )
             connection.execSQL(
                 """
-                INSERT INTO StashItem (
+                INSERT INTO StashEntry (
                     id,
                     stashId,
-                    snapshotType,
                     rawValue,
                     measurementType,
                     createdAtEpochSeconds,
-                    snapshotProductId,
-                    snapshotName,
-                    snapshotIsLiquid,
-                    snapshotSourceType
+                    foodProductId,
+                    foodRecipeId,
+                    batchTotalWeight,
+                    batchTotalAmount,
+                    batchTotalAmountType
                 )
-                VALUES
-                    (1, 1, 0, 500.0, 0, 10, 1, 'Chicken breast', 0, 0),
-                    (2, 1, 0, 250.0, 0, 20, 1, 'Chicken breast duplicate', 0, 0),
-                    (3, 1, 1, 2.0, 2, 30, NULL, 'Tomato soup', 1, 0),
-                    (4, 1, 0, 3.0, 2, 40, 999, 'Missing product', 0, 1)
-                """
-                    .trimIndent()
-            )
-            connection.execSQL(
-                """
-                UPDATE StashItem
-                SET snapshotNote = 'healed from anonymous dish',
-                    snapshotTotalWeight = 800.0,
-                    snapshotTotalAmount = 4.0,
-                    snapshotTotalAmountType = 2,
-                    snapshot_energy = 120.0
-                WHERE id = 3
-                """
-                    .trimIndent()
-            )
-            connection.execSQL(
-                """
-                UPDATE StashItem
-                SET snapshotBrand = 'Lost Brand',
-                    snapshotBarcode = '998877',
-                    snapshotNote = 'healed from missing product',
-                    snapshotServingWeight = 55.0,
-                    snapshot_energy = 345.0
-                WHERE id = 4
+                VALUES (1, 1, 500.0, 0, 10, 1, NULL, NULL, NULL, NULL)
                 """
                     .trimIndent()
             )
@@ -87,160 +121,76 @@ abstract class AbstractStashCoreMigrationTest {
                     note,
                     createdAtEpochSeconds
                 )
-                VALUES
-                    (1, 1, 2, 0, 250.0, 0, 42, 'merged duplicate', 21),
-                    (2, 1, 3, 0, 2.0, 2, NULL, 'anonymous dish', 31)
+                VALUES (1, 1, 1, 0, 500.0, 0, NULL, 'purchase', 11)
                 """
                     .trimIndent()
             )
+            connection.prepare(
+                """
+                SELECT rawValue, foodProductId
+                FROM StashEntry
+                WHERE id = 1
+                """
+                    .trimIndent()
+            ).use { statement ->
+                statement.step()
+                assertEquals(500.0, statement.getDouble(0))
+                assertEquals(1L, statement.getLong(1))
+            }
+            val duplicateInsert =
+                runCatching {
+                    connection.execSQL(
+                        """
+                        INSERT INTO StashEntry (
+                            id,
+                            stashId,
+                            rawValue,
+                            measurementType,
+                            createdAtEpochSeconds,
+                            foodProductId,
+                            foodRecipeId,
+                            batchTotalWeight,
+                            batchTotalAmount,
+                            batchTotalAmountType
+                        )
+                        VALUES (2, 1, 250.0, 0, 20, 1, NULL, NULL, NULL, NULL)
+                        """
+                            .trimIndent()
+                    )
+                }
+            assertTrue(duplicateInsert.isFailure)
         }
+    }
 
-        helper.runMigrationsAndValidate(34, listOf(StashMeasurementMigration)).use { connection ->
-            connection.prepare("SELECT COUNT(*) FROM StashEntry").use { statement ->
-                statement.step()
-                assertEquals(3L, statement.getLong(0))
-            }
-            connection.prepare(
-                """
-                SELECT COUNT(*)
-                FROM sqlite_master
-                WHERE type = 'table'
-                  AND name = 'StashItem'
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(0L, statement.getLong(0))
-            }
-
-            connection.prepare(
-                """
-                SELECT id, rawValue, foodProductId, foodRecipeId, batchTotalWeight, batchTotalAmount
-                FROM StashEntry
-                WHERE stashId = 1
-                  AND foodProductId = 1
-                  AND measurementType = 0
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(1L, statement.getLong(0))
-                assertEquals(750.0, statement.getDouble(1))
-                assertEquals(1L, statement.getLong(2))
-                assertTrue(statement.isNull(3))
-                assertTrue(statement.isNull(4))
-                assertTrue(statement.isNull(5))
-            }
-
-            connection.prepare(
-                """
-                SELECT sourceType, name, note, isLiquid, packageWeight, energy
-                FROM Product
-                WHERE id = (SELECT foodProductId FROM StashEntry WHERE id = 3)
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(0L, statement.getLong(0))
-                assertEquals("Tomato soup", statement.getText(1))
-                assertEquals("healed from anonymous dish", statement.getText(2))
-                assertEquals(1L, statement.getLong(3))
-                assertEquals(800.0, statement.getDouble(4))
-                assertEquals(120.0, statement.getDouble(5))
-            }
-
-            connection.prepare(
-                """
-                SELECT sourceType, name, brand, barcode, note, servingWeight, energy
-                FROM Product
-                WHERE id = (SELECT foodProductId FROM StashEntry WHERE id = 4)
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(0L, statement.getLong(0))
-                assertEquals("Missing product", statement.getText(1))
-                assertEquals("Lost Brand", statement.getText(2))
-                assertEquals("998877", statement.getText(3))
-                assertEquals("healed from missing product", statement.getText(4))
-                assertEquals(55.0, statement.getDouble(5))
-                assertEquals(345.0, statement.getDouble(6))
-            }
-
-            connection.prepare(
-                """
-                SELECT itemId, linkedDiaryEntryId
-                FROM StashMovement
-                WHERE note = 'merged duplicate'
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(1L, statement.getLong(0))
-                assertEquals(42L, statement.getLong(1))
-            }
-            connection.prepare(
-                """
-                SELECT itemId
-                FROM StashMovement
-                WHERE note = 'anonymous dish'
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(3L, statement.getLong(0))
-            }
-
-            connection.prepare(
-                """
-                SELECT COUNT(*)
-                FROM StashEntry
-                WHERE foodRecipeId IS NOT NULL
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(0L, statement.getLong(0))
-            }
-
-            connection.prepare(
-                """
-                SELECT COUNT(*)
-                FROM StashEntry
-                WHERE batchTotalWeight IS NOT NULL
-                   OR batchTotalAmount IS NOT NULL
-                   OR batchTotalAmountType IS NOT NULL
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(0L, statement.getLong(0))
-            }
-
-            connection.prepare(
-                """
-                SELECT COUNT(*)
-                FROM Product
-                WHERE sourceType = 0
-                  AND id > 1
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertEquals(2L, statement.getLong(0))
-            }
-
-            connection.prepare(
-                """
-                SELECT COUNT(*)
-                FROM StashEntry
-                WHERE foodProductId IS NULL
-                """
-                    .trimIndent()
-            ).use { statement ->
-                statement.step()
-                assertFalse(statement.getLong(0) > 0)
+    private fun tableInfo(connection: androidx.sqlite.SQLiteConnection, tableName: String): List<String> {
+        val columns = mutableListOf<String>()
+        connection.prepare("PRAGMA table_info(`$tableName`)").use { statement ->
+            while (statement.step()) {
+                columns += statement.getText(1)
             }
         }
+        return columns
+    }
+
+    private fun indexNames(connection: androidx.sqlite.SQLiteConnection, tableName: String): List<String> {
+        val indices = mutableListOf<String>()
+        connection.prepare("PRAGMA index_list(`$tableName`)").use { statement ->
+            while (statement.step()) {
+                indices += statement.getText(1)
+            }
+        }
+        return indices
+    }
+
+    private fun foreignKeys(connection: androidx.sqlite.SQLiteConnection, tableName: String): Set<String> {
+        val keys = mutableSetOf<String>()
+        connection.prepare("PRAGMA foreign_key_list(`$tableName`)").use { statement ->
+            while (statement.step()) {
+                val referencedTable = statement.getText(2)
+                val fromColumn = statement.getText(3)
+                keys += "$fromColumn->$referencedTable"
+            }
+        }
+        return keys
     }
 }

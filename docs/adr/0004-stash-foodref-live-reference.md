@@ -105,15 +105,14 @@ Both product and recipe FKs use `onDelete = ForeignKey.CASCADE`. If a user delet
 
 ## Migration note
 
-`FoodYouDatabase` version `34` applies `StashMeasurementMigration` to move the stash schema from
-inline snapshot metadata to live food references.
+`FoodYouDatabase` version `33` ships the live-reference stash schema directly through
+`StashCoreMigration`.
 
-- The old schema did not store recipe IDs for legacy recipe-style stash rows, so those rows cannot
-  become true `foodRecipeId` entries.
-- The migration materializes those rows, plus orphaned `snapshotProductId` rows, as synthetic
-  `Product` rows with `FoodSource.Type.User`, then points `StashEntry.foodProductId` at them.
-- Duplicate product rows are merged before the new unique indices are created.
-- `StashMovement.itemId` values are remapped to the surviving `StashEntry` rows after merge.
+- `StashEntry` is created with `foodProductId` / `foodRecipeId` foreign keys and recipe batch
+  context columns from the start.
+- The product and recipe uniqueness indices ship as part of that initial stash schema.
+- Because the snapshot-era stash schema was never released, there is no separate shipped
+  snapshot-to-live stash migration.
 
 ## Consequences
 

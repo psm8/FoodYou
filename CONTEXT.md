@@ -46,7 +46,6 @@ An Android food tracking app (KMP/Compose Multiplatform) with a diary module and
 - Unlinked diary return rule — resolved: returning leftovers from a diary entry with no stash link creates a `Product` in the catalog (with `FoodSource.Type.User`) and references it by ID. This follows the same uniqueness and merge rules as catalog-backed products.
 - Frozen metadata vs. live reference — resolved: stash entries reference the food catalog by ID (`StashFoodRef`) instead of storing copied product/recipe metadata inline. Product entries read all metadata live; recipe entries read metadata live but capture batch context (`totalWeight`, `totalAmount`) at creation time. See [ADR-0004](docs/adr/0004-stash-foodref-live-reference.md).
 - Manual quick-add identity — resolved: manual quick-adds create a real `Product` entity (with `FoodSource.Type.User`) in the catalog and reference it by `FoodId.Product`. There is no `productId = null` concept; all stash entries have a valid food catalog reference.
-- Legacy migration caveat — resolved: snapshot-era recipe-style stash rows from v33 are healed into synthetic user products during the `33 -> 34` migration because the old schema did not store recipe IDs.
 
 ## Rejected alternatives
 

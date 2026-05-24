@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 33,
-    "identityHash": "697605d16c8a55777190dda8b6a36def",
+    "identityHash": "4a9a888dcd036291fdab9cf81542b004",
     "entities": [
       {
         "tableName": "Product",
@@ -1804,8 +1804,8 @@
         ]
       },
       {
-        "tableName": "StashItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `stashId` INTEGER NOT NULL, `snapshotType` INTEGER NOT NULL, `rawValue` REAL NOT NULL, `measurementType` INTEGER NOT NULL, `createdAtEpochSeconds` INTEGER NOT NULL, `snapshotProductId` INTEGER, `snapshotName` TEXT NOT NULL, `snapshotNote` TEXT, `snapshotIsLiquid` INTEGER NOT NULL, `snapshotBrand` TEXT, `snapshotBarcode` TEXT, `snapshotSourceType` INTEGER, `snapshotSourceUrl` TEXT, `snapshotServingWeight` REAL, `snapshotTotalWeight` REAL, `snapshotTotalAmount` REAL, `snapshotTotalAmountType` INTEGER, `snapshot_energy` REAL, `snapshot_proteins` REAL, `snapshot_fats` REAL, `snapshot_saturatedFats` REAL, `snapshot_transFats` REAL, `snapshot_monounsaturatedFats` REAL, `snapshot_polyunsaturatedFats` REAL, `snapshot_omega3` REAL, `snapshot_omega6` REAL, `snapshot_carbohydrates` REAL, `snapshot_sugars` REAL, `snapshot_addedSugars` REAL, `snapshot_dietaryFiber` REAL, `snapshot_solubleFiber` REAL, `snapshot_insolubleFiber` REAL, `snapshot_salt` REAL, `snapshot_cholesterolMilli` REAL, `snapshot_caffeineMilli` REAL, `snapshot_vitaminAMicro` REAL, `snapshot_vitaminB1Milli` REAL, `snapshot_vitaminB2Milli` REAL, `snapshot_vitaminB3Milli` REAL, `snapshot_vitaminB5Milli` REAL, `snapshot_vitaminB6Milli` REAL, `snapshot_vitaminB7Micro` REAL, `snapshot_vitaminB9Micro` REAL, `snapshot_vitaminB12Micro` REAL, `snapshot_vitaminCMilli` REAL, `snapshot_vitaminDMicro` REAL, `snapshot_vitaminEMilli` REAL, `snapshot_vitaminKMicro` REAL, `snapshot_manganeseMilli` REAL, `snapshot_magnesiumMilli` REAL, `snapshot_potassiumMilli` REAL, `snapshot_calciumMilli` REAL, `snapshot_copperMilli` REAL, `snapshot_zincMilli` REAL, `snapshot_sodiumMilli` REAL, `snapshot_ironMilli` REAL, `snapshot_phosphorusMilli` REAL, `snapshot_seleniumMicro` REAL, `snapshot_iodineMicro` REAL, `snapshot_chromiumMicro` REAL, FOREIGN KEY(`stashId`) REFERENCES `StashDefinition`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "StashEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `stashId` INTEGER NOT NULL, `rawValue` REAL NOT NULL, `measurementType` INTEGER NOT NULL, `createdAtEpochSeconds` INTEGER NOT NULL, `foodProductId` INTEGER, `foodRecipeId` INTEGER, `batchTotalWeight` REAL, `batchTotalAmount` REAL, `batchTotalAmountType` INTEGER, FOREIGN KEY(`stashId`) REFERENCES `StashDefinition`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`foodProductId`) REFERENCES `Product`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`foodRecipeId`) REFERENCES `Recipe`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1816,12 +1816,6 @@
           {
             "fieldPath": "stashId",
             "columnName": "stashId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "snapshotType",
-            "columnName": "snapshotType",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -1844,281 +1838,29 @@
             "notNull": true
           },
           {
-            "fieldPath": "snapshotProductId",
-            "columnName": "snapshotProductId",
+            "fieldPath": "foodProductId",
+            "columnName": "foodProductId",
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "snapshotName",
-            "columnName": "snapshotName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "snapshotNote",
-            "columnName": "snapshotNote",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "snapshotIsLiquid",
-            "columnName": "snapshotIsLiquid",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "snapshotBrand",
-            "columnName": "snapshotBrand",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "snapshotBarcode",
-            "columnName": "snapshotBarcode",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "snapshotSourceType",
-            "columnName": "snapshotSourceType",
+            "fieldPath": "foodRecipeId",
+            "columnName": "foodRecipeId",
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "snapshotSourceUrl",
-            "columnName": "snapshotSourceUrl",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "snapshotServingWeight",
-            "columnName": "snapshotServingWeight",
+            "fieldPath": "batchTotalWeight",
+            "columnName": "batchTotalWeight",
             "affinity": "REAL"
           },
           {
-            "fieldPath": "snapshotTotalWeight",
-            "columnName": "snapshotTotalWeight",
+            "fieldPath": "batchTotalAmount",
+            "columnName": "batchTotalAmount",
             "affinity": "REAL"
           },
           {
-            "fieldPath": "snapshotTotalAmount",
-            "columnName": "snapshotTotalAmount",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "snapshotTotalAmountType",
-            "columnName": "snapshotTotalAmountType",
+            "fieldPath": "batchTotalAmountType",
+            "columnName": "batchTotalAmountType",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "nutrients.energy",
-            "columnName": "snapshot_energy",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.proteins",
-            "columnName": "snapshot_proteins",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.fats",
-            "columnName": "snapshot_fats",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.saturatedFats",
-            "columnName": "snapshot_saturatedFats",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.transFats",
-            "columnName": "snapshot_transFats",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.monounsaturatedFats",
-            "columnName": "snapshot_monounsaturatedFats",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.polyunsaturatedFats",
-            "columnName": "snapshot_polyunsaturatedFats",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.omega3",
-            "columnName": "snapshot_omega3",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.omega6",
-            "columnName": "snapshot_omega6",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.carbohydrates",
-            "columnName": "snapshot_carbohydrates",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.sugars",
-            "columnName": "snapshot_sugars",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.addedSugars",
-            "columnName": "snapshot_addedSugars",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.dietaryFiber",
-            "columnName": "snapshot_dietaryFiber",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.solubleFiber",
-            "columnName": "snapshot_solubleFiber",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.insolubleFiber",
-            "columnName": "snapshot_insolubleFiber",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.salt",
-            "columnName": "snapshot_salt",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.cholesterolMilli",
-            "columnName": "snapshot_cholesterolMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "nutrients.caffeineMilli",
-            "columnName": "snapshot_caffeineMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminAMicro",
-            "columnName": "snapshot_vitaminAMicro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB1Milli",
-            "columnName": "snapshot_vitaminB1Milli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB2Milli",
-            "columnName": "snapshot_vitaminB2Milli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB3Milli",
-            "columnName": "snapshot_vitaminB3Milli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB5Milli",
-            "columnName": "snapshot_vitaminB5Milli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB6Milli",
-            "columnName": "snapshot_vitaminB6Milli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB7Micro",
-            "columnName": "snapshot_vitaminB7Micro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB9Micro",
-            "columnName": "snapshot_vitaminB9Micro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminB12Micro",
-            "columnName": "snapshot_vitaminB12Micro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminCMilli",
-            "columnName": "snapshot_vitaminCMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminDMicro",
-            "columnName": "snapshot_vitaminDMicro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminEMilli",
-            "columnName": "snapshot_vitaminEMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "vitamins.vitaminKMicro",
-            "columnName": "snapshot_vitaminKMicro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.manganeseMilli",
-            "columnName": "snapshot_manganeseMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.magnesiumMilli",
-            "columnName": "snapshot_magnesiumMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.potassiumMilli",
-            "columnName": "snapshot_potassiumMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.calciumMilli",
-            "columnName": "snapshot_calciumMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.copperMilli",
-            "columnName": "snapshot_copperMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.zincMilli",
-            "columnName": "snapshot_zincMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.sodiumMilli",
-            "columnName": "snapshot_sodiumMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.ironMilli",
-            "columnName": "snapshot_ironMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.phosphorusMilli",
-            "columnName": "snapshot_phosphorusMilli",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.seleniumMicro",
-            "columnName": "snapshot_seleniumMicro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.iodineMicro",
-            "columnName": "snapshot_iodineMicro",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "minerals.chromiumMicro",
-            "columnName": "snapshot_chromiumMicro",
-            "affinity": "REAL"
           }
         ],
         "primaryKey": {
@@ -2129,13 +1871,35 @@
         },
         "indices": [
           {
-            "name": "index_StashItem_stashId",
+            "name": "index_StashEntry_stashId",
             "unique": false,
             "columnNames": [
               "stashId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_StashItem_stashId` ON `${TABLE_NAME}` (`stashId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_StashEntry_stashId` ON `${TABLE_NAME}` (`stashId`)"
+          },
+          {
+            "name": "index_StashEntry_stashId_foodProductId_measurementType",
+            "unique": true,
+            "columnNames": [
+              "stashId",
+              "foodProductId",
+              "measurementType"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_StashEntry_stashId_foodProductId_measurementType` ON `${TABLE_NAME}` (`stashId`, `foodProductId`, `measurementType`)"
+          },
+          {
+            "name": "index_StashEntry_stashId_foodRecipeId_measurementType",
+            "unique": true,
+            "columnNames": [
+              "stashId",
+              "foodRecipeId",
+              "measurementType"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_StashEntry_stashId_foodRecipeId_measurementType` ON `${TABLE_NAME}` (`stashId`, `foodRecipeId`, `measurementType`)"
           }
         ],
         "foreignKeys": [
@@ -2145,6 +1909,28 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "stashId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Product",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "foodProductId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Recipe",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "foodRecipeId"
             ],
             "referencedColumns": [
               "id"
@@ -2271,7 +2057,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '697605d16c8a55777190dda8b6a36def')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4a9a888dcd036291fdab9cf81542b004')"
     ]
   }
 }

@@ -117,7 +117,7 @@ exit 0</code></pre>
     </div>
 
     <div class="step-expect">
-      <p>Build compiles and existing tests pass. Database version stays at 34.</p>
+      <p>Build compiles and the stash schema stays internally consistent.</p>
     </div>
 
     <h4>Scripts</h4>
@@ -187,6 +187,33 @@ ShoppingSessionUseCaseTest &gt; initializationError FAILED
 java.lang.UnsupportedClassVersionError
 BUILD FAILED in 44s
 exit 1</code></pre>
+  </section>
+
+  <section class="step" data-step="10" data-kind="single">
+    <p class="step-summary">Collapsed the live-reference stash schema back into version 33 so the shipped stash migration stays at <code>32 -&gt; 33</code> instead of introducing version 34.</p>
+
+    <div class="step-how">
+      <p>Rewrote <code>StashCoreMigration</code> to create the final <code>StashEntry</code> schema directly, dropped the unused <code>StashMeasurementMigration</code>, regenerated Room schema <code>33.json</code>, and removed <code>34.json</code>.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The branch should now report database version 33, export the live-reference stash tables in <code>33.json</code>, and no longer carry a shipped stash-specific version 34 step.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ git diff --name-status -- app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/FoodYouDatabase.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashCoreMigration.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashMeasurementMigration.kt app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/34.json
+M	app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json
+D	app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/34.json
+M	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/FoodYouDatabase.kt
+M	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashCoreMigration.kt
+D	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashMeasurementMigration.kt
+exit 0</code></pre>
+
+    <pre class="script-run"><code>$ rg -n "\"tableName\": \"StashEntry\"|\"foodRecipeId\"|\"batchTotalWeight\"" app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json
+1807:        "tableName": "StashEntry",
+1846:            "fieldPath": "foodRecipeId",
+1851:            "fieldPath": "batchTotalWeight",
+exit 0</code></pre>
   </section>
 
 </body>
