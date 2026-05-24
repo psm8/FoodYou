@@ -2,24 +2,52 @@ package com.maksimowiczm.foodyou.stash.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.sum
-import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
-import com.maksimowiczm.foodyou.common.domain.measurement.type
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.Product as CatalogProduct
 import kotlin.jvm.JvmInline
 
 @JvmInline value class ShoppingSessionId(val value: String)
 
 @JvmInline value class ShoppingSessionItemId(val value: String)
 
+data class ShoppingSessionProductDetails(
+    val name: String,
+    val isLiquid: Boolean,
+    val totalWeight: Double?,
+    val servingWeight: Double?,
+    val nutritionFacts: NutritionFacts,
+) {
+    fun metricAmount(measurement: Measurement): Double =
+        when (measurement) {
+            is Measurement.ImmutableMeasurement -> measurement.metric
+            is Measurement.Package -> measurement.weight(requireNotNull(totalWeight))
+            is Measurement.Serving -> measurement.weight(requireNotNull(servingWeight))
+        }
+
+    companion object {
+        fun from(product: CatalogProduct): ShoppingSessionProductDetails =
+            ShoppingSessionProductDetails(
+                name = product.headline,
+                isLiquid = product.isLiquid,
+                totalWeight = product.totalWeight,
+                servingWeight = product.servingWeight,
+                nutritionFacts = product.nutritionFacts,
+            )
+    }
+}
+
 data class ShoppingSessionItem(
     val id: ShoppingSessionItemId,
-    val productId: FoodId.Product,
-    val snapshot: RawProductSnapshot,
+    val foodRef: StashFoodRef.Product,
+    val productDetails: ShoppingSessionProductDetails,
     val measurement: StashMeasurement,
 ) {
+    val productId: FoodId.Product
+        get() = foodRef.productId
+
     val totalNutritionFacts: NutritionFacts =
-        snapshot.nutritionFacts * (measurement.measurement.rawValue / 100.0)
+        productDetails.nutritionFacts * (productDetails.metricAmount(measurement.measurement) / 100.0)
 }
 
 data class ShoppingSession(
@@ -32,12 +60,13 @@ data class ShoppingSession(
 
     fun add(
         productId: FoodId.Product,
-        snapshot: RawProductSnapshot,
+        foodRef: StashFoodRef.Product,
+        productDetails: ShoppingSessionProductDetails,
         measurement: StashMeasurement,
     ): ShoppingSession {
         val existingItem =
             items.firstOrNull {
-                it.productId == productId && it.measurement.type == measurement.type
+                it.foodRef.productId == productId && it.measurement.type == measurement.type
             }
         if (existingItem == null) {
             return copy(
@@ -45,8 +74,8 @@ data class ShoppingSession(
                     items +
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("${id.value}-item-${items.size + 1}"),
-                            productId = productId,
-                            snapshot = snapshot,
+                            foodRef = foodRef,
+                            productDetails = productDetails,
                             measurement = measurement,
                         )
             )
@@ -63,18 +92,4 @@ data class ShoppingSession(
                 }
         )
     }
-
-    fun updateQuantity(itemId: ShoppingSessionItemId, measurement: StashMeasurement): ShoppingSession =
-        copy(
-            items =
-                items.map { item ->
-                    if (item.id == itemId) {
-                        item.copy(measurement = measurement)
-                    } else {
-                        item
-                    }
-                }
-        )
 }
-
-

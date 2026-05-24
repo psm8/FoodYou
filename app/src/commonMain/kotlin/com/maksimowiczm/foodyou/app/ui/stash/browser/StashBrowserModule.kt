@@ -13,6 +13,7 @@ fun Module.stashBrowserModule() {
             stashId = stashId,
             stashRepository = get(),
             stashOwnerProvider = get(),
+            observeFoodUseCase = get(),
             browserActions = get(),
         )
     }

@@ -66,4 +66,55 @@ class RecipeStashAvailabilityUseCaseTest {
         assertEquals(1, success.data.partiallyAvailableIngredientsCount)
         assertEquals(1, success.data.unavailableIngredientsCount)
     }
+
+    @Test
+    fun when_visible_stash_contains_recipe_entries_then_only_matching_product_entries_are_allocated() = runBlocking {
+        val flour = sampleProduct(id = 1, name = "Flour", brand = null)
+        val nestedRecipe = sampleRecipe(id = 9, name = "Prepared dough")
+        val recipe =
+            Recipe(
+                id = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(1),
+                name = "Pizza",
+                servings = 2,
+                ingredients = listOf(RecipeIngredient(flour, Measurement.Gram(200.0))),
+                note = null,
+                isLiquid = false,
+            )
+        val useCase =
+            AssessRecipeStashAvailabilityUseCase(
+                recipeRepository = FakeRecipeRepository(listOf(recipe)),
+                stashRepository =
+                    FakeStashRepository(
+                        initialStashes = listOf(sampleStash()),
+                        initialItems =
+                            listOf(
+                                sampleAnonymousDishItem(
+                                    id = 1,
+                                    measurement = StashMeasurement.servings(1.0),
+                                    recipe = nestedRecipe,
+                                ),
+                                sampleRawProductItem(
+                                    id = 2,
+                                    measurement = StashMeasurement.grams(250.0),
+                                    product = flour,
+                                ),
+                            ),
+                    ),
+                stashOwnerProvider = localOwnerProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.assess(
+                recipeId = recipe.id,
+                measurement = Measurement.Serving(2.0),
+            )
+
+        val success =
+            assertIs<Success<RecipeStashAvailability, AssessRecipeStashAvailabilityError>>(result)
+        val ingredient = success.data.ingredients.single()
+        assertEquals(IngredientAvailabilityStatus.Available, ingredient.status)
+        assertEquals(1, ingredient.allocations.size)
+        assertEquals(2L, ingredient.allocations.single().item.id.value)
+    }
 }

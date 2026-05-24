@@ -2,7 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import com.maksimowiczm.foodyou.stash.domain.entity.StashOwnerId
@@ -21,13 +21,13 @@ data class StashManagementOverview(
     companion object {
         fun from(
             stash: StashDefinition,
-            items: List<StashItem>,
+            items: List<StashEntry>,
             movements: List<StashMovement>,
         ): StashManagementOverview {
             val lastModifiedAt =
                 listOfNotNull(
                     stash.createdAt,
-                    items.maxOfOrNull(StashItem::createdAt),
+                    items.maxOfOrNull(StashEntry::createdAt),
                     movements.maxOfOrNull(StashMovement::createdAt),
                 ).maxOrNull() ?: stash.createdAt
 

@@ -7,8 +7,8 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
@@ -33,7 +33,7 @@ class ConfirmShoppingSessionUseCase(
 ) {
     suspend fun confirm(
         session: ShoppingSession,
-    ): Result<List<StashItemId>, ConfirmShoppingSessionError> {
+    ): Result<List<StashEntryId>, ConfirmShoppingSessionError> {
         if (session.items.isEmpty()) {
             return logger.logAndReturnFailure(
                 tag = TAG,
@@ -59,9 +59,9 @@ class ConfirmShoppingSessionUseCase(
                     session.items.map { item ->
                         val itemId =
                             stashRepository.insertItem(
-                                StashItem.new(
+                                StashEntry.new(
                                     stashId = stash.id,
-                                    snapshot = item.snapshot,
+                                    foodRef = item.foodRef,
                                     measurement = item.measurement,
                                     createdAt = now,
                                 )

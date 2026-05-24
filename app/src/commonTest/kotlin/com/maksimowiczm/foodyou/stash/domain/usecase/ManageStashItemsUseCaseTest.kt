@@ -36,7 +36,7 @@ class ManageStashItemsUseCaseTest {
                     action = ManualStashAction(reason = "Spoilage", note = "Trimmed moldy edge"),
                 )
 
-            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(300.0, updated.measurement.measurement.rawValue)
             val movement = repository.allMovements().single()
             assertEquals(-200.0, movement.measurementChange.measurement.rawValue)
@@ -68,10 +68,10 @@ class ManageStashItemsUseCaseTest {
                     action = ManualStashAction(reason = "Correction"),
                 )
 
-            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(StashMeasurement.grams(0.0), updated.measurement)
             assertEquals(1, repository.allItems().size)
-            assertEquals(item.snapshot, repository.allItems().single().snapshot)
+            assertEquals(item.foodRef, repository.allItems().single().foodRef)
             assertEquals(StashMeasurement.grams(0.0), repository.allItems().single().measurement)
             val movement = repository.allMovements().single()
             assertEquals(StashMeasurement.grams(-500.0), movement.measurementChange)
@@ -103,7 +103,7 @@ class ManageStashItemsUseCaseTest {
                     action = ManualStashAction(reason = "Finished"),
                 )
 
-            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(StashMeasurement.servings(0.0), updated.measurement)
             assertEquals(emptyList(), repository.allItems())
             val movement = repository.allMovements().single()
@@ -112,7 +112,7 @@ class ManageStashItemsUseCaseTest {
         }
 
     @Test
-    fun `when removing item, it deletes the item and logs the full removal`() =
+    fun `when removing product-backed item, it preserves a zero row and logs the full removal`() =
         runBlocking {
             val item = sampleRawProductItem(measurement = StashMeasurement.grams(250.0))
             val repository =
@@ -135,9 +135,11 @@ class ManageStashItemsUseCaseTest {
                     action = ManualStashAction(reason = "Discarded", note = "Expired yesterday"),
                 )
 
-            val removed = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            val removed = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(0.0, removed.measurement.measurement.rawValue)
-            assertEquals(emptyList(), repository.allItems())
+            assertEquals(1, repository.allItems().size)
+            assertEquals(0.0, repository.allItems().single().measurement.measurement.rawValue)
+            assertEquals(item.foodRef, repository.allItems().single().foodRef)
             val movement = repository.allMovements().single()
             assertEquals(-250.0, movement.measurementChange.measurement.rawValue)
             assertEquals("Discarded\nExpired yesterday", movement.note)
@@ -165,7 +167,7 @@ class ManageStashItemsUseCaseTest {
 
             val result = useCase.move(itemId = item.id, targetStashId = pantry.id)
 
-            val moved = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+            val moved = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(pantry.id, moved.stashId)
             assertEquals(
                 listOf(

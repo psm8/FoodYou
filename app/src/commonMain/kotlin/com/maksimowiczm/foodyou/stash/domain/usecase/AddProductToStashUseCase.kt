@@ -9,11 +9,11 @@ import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
@@ -31,7 +31,7 @@ sealed interface AddProductToStashError {
     data object InvalidMeasurement : AddProductToStashError
 }
 
-data class AddProductToStashResult(val stashId: StashDefinitionId, val itemId: StashItemId)
+data class AddProductToStashResult(val stashId: StashDefinitionId, val itemId: StashEntryId)
 
 class AddProductToStashUseCase(
     private val productRepository: ProductRepository,
@@ -104,17 +104,18 @@ class AddProductToStashUseCase(
 
             val existingItem =
                 stashRepository.observeStashContents(targetStash.id).first().firstOrNull {
-                    it.snapshot is RawProductSnapshot &&
-                        it.snapshot.productId == product.id &&
+                    val foodRef = it.foodRef
+                    foodRef is StashFoodRef.Product &&
+                        foodRef.productId == product.id &&
                         it.measurement.type == stashMeasurement.type
                 }
             val mergeCandidate = existingItem
             val itemId =
                 if (mergeCandidate == null) {
                     stashRepository.insertItem(
-                        StashItem.new(
+                        StashEntry.new(
                             stashId = targetStash.id,
-                            snapshot = RawProductSnapshot.from(product),
+                            foodRef = StashFoodRef.Product(product.id),
                             measurement = stashMeasurement,
                             createdAt = now,
                         )

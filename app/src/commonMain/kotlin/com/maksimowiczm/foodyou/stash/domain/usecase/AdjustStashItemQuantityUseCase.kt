@@ -8,10 +8,9 @@ import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
@@ -21,7 +20,7 @@ import kotlin.math.abs
 import kotlinx.coroutines.flow.first
 
 sealed interface AdjustStashItemQuantityError {
-    data class ItemNotFound(val itemId: StashItemId) : AdjustStashItemQuantityError
+    data class ItemNotFound(val itemId: StashEntryId) : AdjustStashItemQuantityError
 
     data class QuantityUnitMismatch(
         val expected: MeasurementType,
@@ -39,10 +38,10 @@ class AdjustStashItemQuantityUseCase(
     private val logger: Logger,
 ) {
     suspend fun adjust(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
-    ): Result<StashItem, AdjustStashItemQuantityError> {
+    ): Result<StashEntry, AdjustStashItemQuantityError> {
         val ownerId = stashOwnerProvider.current()
         return transactionProvider.withTransaction {
             val ownedStashIds = stashRepository.observeStashes(ownerId).first().map { it.id }.toSet()
@@ -109,10 +108,10 @@ class AdjustStashItemQuantityUseCase(
     private fun StashMeasurement.isSameAmountAs(other: StashMeasurement): Boolean =
         type == other.type && abs(measurement.rawValue - other.measurement.rawValue) <= EPSILON
 
-    private fun StashItem.canDeleteWhenEmpty(): Boolean =
-        when (val snapshot = snapshot) {
-            is RawProductSnapshot -> snapshot.productId == null
-            is AnonymousDishSnapshot -> true
+    private fun StashEntry.canDeleteWhenEmpty(): Boolean =
+        when (foodRef) {
+            is StashFoodRef.Product -> false
+            is StashFoodRef.Recipe -> true
         }
 
     private companion object {

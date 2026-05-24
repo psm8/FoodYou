@@ -21,12 +21,11 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
@@ -48,7 +47,7 @@ import kotlinx.datetime.toInstant
 
 internal class FakeStashRepository(
     initialStashes: List<StashDefinition> = emptyList(),
-    initialItems: List<StashItem> = emptyList(),
+    initialItems: List<StashEntry> = emptyList(),
     initialMovements: List<StashMovement> = emptyList(),
     private val failOnMovementInsertAttempt: Int? = null,
 ) : StashRepository, SnapshottingFakeTransactionProvider.StateRepository {
@@ -67,12 +66,12 @@ internal class FakeStashRepository(
                 .sortedWith(compareBy<StashDefinition>({ it.ordering }, { it.createdAt }, { it.id.value }))
         )
 
-    override fun observeStashContents(stashId: StashDefinitionId): Flow<List<StashItem>> =
+    override fun observeStashContents(stashId: StashDefinitionId): Flow<List<StashEntry>> =
         flowOf(
             items.values
                 .filter { it.stashId == stashId }
                 .filter { it.measurement.measurement.rawValue > 0.0 }
-                .sortedWith(compareByDescending(StashItem::createdAt).thenByDescending { it.id.value })
+                .sortedWith(compareByDescending(StashEntry::createdAt).thenByDescending { it.id.value })
         )
 
     override fun observeMovementHistory(stashId: StashDefinitionId): Flow<List<StashMovement>> =
@@ -82,7 +81,7 @@ internal class FakeStashRepository(
                 .sortedWith(compareByDescending(StashMovement::createdAt).thenByDescending { it.id.value })
         )
 
-    override suspend fun getItem(id: StashItemId): StashItem? = items[id.value]
+    override suspend fun getItem(id: StashEntryId): StashEntry? = items[id.value]
 
     override suspend fun getLinkedDiaryEntryMovements(
         linkedDiaryEntryId: com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
@@ -105,17 +104,17 @@ internal class FakeStashRepository(
         stashes.remove(id.value)
     }
 
-    override suspend fun insertItem(item: StashItem): StashItemId {
-        val id = StashItemId(nextItemId++)
+    override suspend fun insertItem(item: StashEntry): StashEntryId {
+        val id = StashEntryId(nextItemId++)
         items[id.value] = item.copy(id = id)
         return id
     }
 
-    override suspend fun updateItem(item: StashItem) {
+    override suspend fun updateItem(item: StashEntry) {
         items[item.id.value] = item
     }
 
-    override suspend fun deleteItem(id: StashItemId) {
+    override suspend fun deleteItem(id: StashEntryId) {
         items.remove(id.value)
     }
 
@@ -131,7 +130,7 @@ internal class FakeStashRepository(
 
     fun allStashes(): List<StashDefinition> = stashes.values.sortedBy { it.id.value }
 
-    fun allItems(): List<StashItem> = items.values.sortedBy { it.id.value }
+    fun allItems(): List<StashEntry> = items.values.sortedBy { it.id.value }
 
     fun allMovements(): List<StashMovement> = movements.values.sortedBy { it.id.value }
 
@@ -163,7 +162,7 @@ internal class FakeStashRepository(
 
 internal data class FakeStashRepositoryState(
     val stashes: Map<Long, StashDefinition>,
-    val items: Map<Long, StashItem>,
+    val items: Map<Long, StashEntry>,
     val movements: Map<Long, StashMovement>,
     val nextStashId: Long,
     val nextItemId: Long,
@@ -173,7 +172,7 @@ internal data class FakeStashRepositoryState(
 
 internal class FakeProductRepository(
     initialProducts: List<Product> = emptyList(),
-) : ProductRepository {
+) : ProductRepository, SnapshottingFakeTransactionProvider.StateRepository {
     private val products = initialProducts.associateBy { it.id.id }.toMutableMap()
     private var nextId = (products.keys.maxOrNull() ?: 0L) + 1L
 
@@ -239,7 +238,23 @@ internal class FakeProductRepository(
     override suspend fun deleteProduct(product: Product) {
         products.remove(product.id.id)
     }
+
+    fun allProducts(): List<Product> = products.values.sortedBy { it.id.id }
+
+    override fun snapshotState(): Any = FakeProductRepositoryState(products.toMap(), nextId)
+
+    override fun restoreState(state: Any) {
+        val snapshot = state as FakeProductRepositoryState
+        products.clear()
+        products.putAll(snapshot.products)
+        nextId = snapshot.nextId
+    }
 }
+
+internal data class FakeProductRepositoryState(
+    val products: Map<Long, Product>,
+    val nextId: Long,
+)
 
 internal class FakeRecipeRepository(
     initialRecipes: List<Recipe> = emptyList(),
@@ -501,11 +516,11 @@ internal fun sampleRawProductItem(
     stashId: Long = 1L,
     measurement: StashMeasurement = StashMeasurement.grams(500.0),
     product: Product = sampleProduct(),
-): StashItem =
-    StashItem(
-        id = StashItemId(id),
+): StashEntry =
+    StashEntry(
+        id = StashEntryId(id),
         stashId = StashDefinitionId(stashId),
-        snapshot = RawProductSnapshot.from(product),
+        foodRef = StashFoodRef.Product(product.id),
         measurement = measurement,
         createdAt = FIXED_NOW,
     )
@@ -517,16 +532,11 @@ internal fun sampleAnonymousDishItem(
     recipe: Recipe = sampleRecipe(),
     totalAmount: Measurement = Measurement.Serving(2.0),
     servingsMade: Int = 8,
-): StashItem =
-    StashItem(
-        id = StashItemId(id),
+): StashEntry =
+    StashEntry(
+        id = StashEntryId(id),
         stashId = StashDefinitionId(stashId),
-        snapshot =
-            AnonymousDishSnapshot.from(
-                recipe = recipe,
-                totalAmount = totalAmount,
-                servingsMade = servingsMade,
-            ),
+        foodRef = StashFoodRef.Recipe.from(recipe, totalAmount, servingsMade),
         measurement = measurement,
         createdAt = FIXED_NOW,
     )

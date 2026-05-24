@@ -8,28 +8,25 @@ import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashSnapshot
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlin.math.abs
 
 sealed interface RestoreLinkedDiaryEntryStashError {
-    data class LinkedItemNotFound(val itemId: StashItemId) : RestoreLinkedDiaryEntryStashError
+    data class LinkedItemNotFound(val itemId: StashEntryId) : RestoreLinkedDiaryEntryStashError
 
     data class InsufficientQuantityToReverse(
-        val itemId: StashItemId,
+        val itemId: StashEntryId,
         val requested: StashMeasurement,
         val available: StashMeasurement,
     ) : RestoreLinkedDiaryEntryStashError
@@ -37,6 +34,7 @@ sealed interface RestoreLinkedDiaryEntryStashError {
 
 class RestoreLinkedDiaryEntryStashUseCase(
     private val stashRepository: StashRepository,
+    private val productRepository: ProductRepository,
     private val dateProvider: DateProvider,
     private val logger: Logger,
 ) {
@@ -100,12 +98,16 @@ class RestoreLinkedDiaryEntryStashUseCase(
 
             val targetItem =
                 if (item == null) {
-                    createLinkedItem(
+                    recreateItem(
                         entry = entry,
                         itemId = movement.itemId,
                         stashId = movement.stashId,
                         measurement = reversalMeasurement,
-                        createdAt = movement.createdAt,
+                        createdAt = now,
+                    ) ?: return logger.logAndReturnFailure(
+                        tag = TAG,
+                        error = RestoreLinkedDiaryEntryStashError.LinkedItemNotFound(movement.itemId),
+                        message = { "Cannot recreate stash item ${movement.itemId}; linked food reference is unavailable." },
                     )
                 } else if (reversalMeasurement.measurement.rawValue > 0.0) {
                     item.copy(measurement = (item.measurement + reversalMeasurement).normalize())
@@ -129,15 +131,17 @@ class RestoreLinkedDiaryEntryStashUseCase(
                     item.copy(measurement = (item.measurement - measurementToRemove).normalize())
                 }
 
-            if (targetItem.measurement.measurement.rawValue <= EPSILON && targetItem.canDeleteWhenEmpty()) {
-                stashRepository.deleteItem(targetItem.id)
-            } else {
-                stashRepository.updateItem(targetItem)
-            }
+            val targetItemId =
+                if (item == null) {
+                    stashRepository.insertItem(targetItem)
+                } else {
+                    stashRepository.updateItem(targetItem)
+                    targetItem.id
+                }
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = targetItem.stashId,
-                    itemId = targetItem.id,
+                    itemId = targetItemId,
                     operation = reversalOperation,
                     measurementChange = reversalMeasurement,
                     linkedDiaryEntryId = linkedDiaryEntryId,
@@ -180,12 +184,16 @@ class RestoreLinkedDiaryEntryStashUseCase(
             val targetItem =
                 if (adjustmentMeasurement.measurement.rawValue > 0.0) {
                     currentItem?.copy(measurement = (currentItem.measurement + adjustmentMeasurement).normalize())
-                        ?: createLinkedItem(
+                        ?: recreateItem(
                             entry = entry,
                             itemId = itemId,
                             stashId = stashId,
                             measurement = adjustmentMeasurement,
-                            createdAt = itemMovements.first().createdAt,
+                            createdAt = now,
+                        ) ?: return logger.logAndReturnFailure(
+                            tag = TAG,
+                            error = RestoreLinkedDiaryEntryStashError.LinkedItemNotFound(itemId),
+                            message = { "Cannot recreate stash item $itemId during rebalance; linked food reference is unavailable." },
                         )
                 } else {
                     val measurementToRemove = adjustmentMeasurement.negate()
@@ -212,15 +220,17 @@ class RestoreLinkedDiaryEntryStashUseCase(
                     item.copy(measurement = (item.measurement - measurementToRemove).normalize())
                 }
 
-            if (targetItem.measurement.measurement.rawValue <= EPSILON && targetItem.canDeleteWhenEmpty()) {
-                stashRepository.deleteItem(targetItem.id)
-            } else {
-                stashRepository.updateItem(targetItem)
-            }
+            val targetItemId =
+                if (currentItem == null) {
+                    stashRepository.insertItem(targetItem)
+                } else {
+                    stashRepository.updateItem(targetItem)
+                    targetItem.id
+                }
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = stashId,
-                    itemId = targetItem.id,
+                    itemId = targetItemId,
                     operation = StashMovementOperation.AutoReversalOnEdit,
                     measurementChange = adjustmentMeasurement,
                     linkedDiaryEntryId = linkedDiaryEntryId,
@@ -240,53 +250,23 @@ class RestoreLinkedDiaryEntryStashUseCase(
     private fun StashMeasurement.scale(factor: Double): StashMeasurement =
         StashMeasurement(Measurement.from(type, measurement.rawValue * factor))
 
-    private fun createLinkedItem(
+    private suspend fun recreateItem(
         entry: FoodDiaryEntry,
-        itemId: StashItemId,
+        itemId: StashEntryId,
         stashId: StashDefinitionId,
         measurement: StashMeasurement,
         createdAt: kotlinx.datetime.LocalDateTime,
-    ): StashItem =
-        StashItem(
+    ): StashEntry? {
+        val product = entry.food as? DiaryFoodProduct ?: return null
+        val productId = product.ensureProductId(productRepository)
+        return StashEntry(
             id = itemId,
             stashId = stashId,
-            snapshot = entry.food.toReturnedSnapshot(measurement),
-            measurement = measurement.normalize(),
+            foodRef = StashFoodRef.Product(productId),
+            measurement = measurement,
             createdAt = createdAt,
         )
-
-    private fun DiaryFood.toReturnedSnapshot(measurement: StashMeasurement): StashSnapshot =
-        when (this) {
-            is DiaryFoodProduct ->
-                RawProductSnapshot(
-                    productId = null,
-                    name = name,
-                    brand = null,
-                    barcode = null,
-                    note = note,
-                    isLiquid = isLiquid,
-                    packageWeight = measurement.measurement.rawValue,
-                    servingWeight = servingWeight?.coerceAtMost(measurement.measurement.rawValue),
-                    source = source,
-                    nutritionFacts = nutritionFacts,
-                )
-
-            is DiaryFoodRecipe ->
-                AnonymousDishSnapshot(
-                    name = name,
-                    nutritionFacts = nutritionFacts,
-                    note = note,
-                    isLiquid = isLiquid,
-                    totalWeight = measurement.measurement.rawValue,
-                    totalAmount = measurement.measurement,
-                )
-        }
-
-    private fun StashItem.canDeleteWhenEmpty(): Boolean =
-        when (val snapshot = snapshot) {
-            is RawProductSnapshot -> snapshot.productId == null
-            is AnonymousDishSnapshot -> true
-        }
+    }
 
     private companion object {
         const val TAG = "RestoreLinkedDiaryEntryStashUseCase"

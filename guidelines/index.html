@@ -17,7 +17,7 @@
 <body>
 
   <h1>Food Stash Feature — Evidence Page</h1>
-  <p>Canonical evidence for the food stash implementation on branch <code>fix/food-stash-fixes</code>.</p>
+  <p>Canonical evidence for the food stash implementation on branch <code>feat/issue-40-47-stash-foodref-rollup</code>.</p>
 
   <section class="step" data-step="1" data-kind="single">
     <p class="step-summary">Verified the Home screen shows the Kitchen stash card with Add and Quick Add entry points.</p>
@@ -117,7 +117,7 @@ exit 0</code></pre>
     </div>
 
     <div class="step-expect">
-      <p>Build compiles and existing tests pass. Database version stays at 34.</p>
+      <p>Build compiles and the stash schema stays internally consistent.</p>
     </div>
 
     <h4>Scripts</h4>
@@ -161,6 +161,162 @@ exit 0</code></pre>
 shared/barcodescanner/src/main/kotlin/.../domain/StashQuantity.kt
 exit 0</code></pre>
   </section>
+
+  <section class="step" data-step="9" data-kind="single">
+    <p class="step-summary">Validated the stash live-reference bundle compiles on the Android unit-test classpath and captured the remaining runtime blocker for targeted unit tests.</p>
+
+    <div class="step-how">
+      <p>Ran the focused Android unit-test compile and the targeted stash test invocation on branch <code>feat/issue-40-47-stash-foodref-rollup</code>.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The compile should succeed for the refactor bundle, and the test run should fail only with the known environment-wide <code>UnsupportedClassVersionError</code>.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ .\gradlew --no-daemon --no-build-cache :app:compileDebugUnitTestKotlinAndroid -x :shared:barcodescanner:compileDebugJavaWithJavac
+BUILD SUCCESSFUL in 2m 33s
+66 actionable tasks: 7 executed, 59 up-to-date
+exit 0</code></pre>
+
+    <pre class="script-run"><code>$ .\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest -x :shared:barcodescanner:compileDebugJavaWithJavac --tests "*CreateManualStashSnapshotUseCaseTest" --tests "*HomeStashQuickAddViewModelTest" --tests "*ShoppingSessionUseCaseTest" --tests "*ShoppingSessionStateTest" --tests "*ShoppingSessionViewModelTest" --tests "*RecipeStashAvailabilityUseCaseTest"
+ShoppingSessionStateTest &gt; initializationError FAILED
+CreateManualStashSnapshotUseCaseTest &gt; initializationError FAILED
+RecipeStashAvailabilityUseCaseTest &gt; initializationError FAILED
+ShoppingSessionUseCaseTest &gt; initializationError FAILED
+java.lang.UnsupportedClassVersionError
+BUILD FAILED in 44s
+exit 1</code></pre>
+  </section>
+
+  <section class="step" data-step="10" data-kind="single">
+    <p class="step-summary">Collapsed the live-reference stash schema back into version 33 so the shipped stash migration stays at <code>32 -&gt; 33</code> instead of introducing version 34.</p>
+
+    <div class="step-how">
+      <p>Rewrote <code>StashCoreMigration</code> to create the final <code>StashEntry</code> schema directly, dropped the unused <code>StashMeasurementMigration</code>, regenerated Room schema <code>33.json</code>, and removed <code>34.json</code>.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The branch should now report database version 33, export the live-reference stash tables in <code>33.json</code>, and no longer carry a shipped stash-specific version 34 step.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ git diff --name-status -- app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/FoodYouDatabase.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashCoreMigration.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashMeasurementMigration.kt app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/34.json
+M	app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json
+D	app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/34.json
+M	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/FoodYouDatabase.kt
+M	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashCoreMigration.kt
+D	app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/infrastructure/room/migration/StashMeasurementMigration.kt
+exit 0</code></pre>
+
+    <pre class="script-run"><code>$ rg -n "\"tableName\": \"StashEntry\"|\"foodRecipeId\"|\"batchTotalWeight\"" app/schemas/com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase/33.json
+1807:        "tableName": "StashEntry",
+1846:            "fieldPath": "foodRecipeId",
+1851:            "fieldPath": "batchTotalWeight",
+exit 0</code></pre>
+  </section>
+
+ <section class="step" data-step="11" data-kind="single">
+   <p class="step-summary">Captured the shipped Settings -> Stashes screen with the live <code>Fridge</code> row and every stash action exposed from the real app.</p>
+
+   <div class="step-how">
+     <p>Launched the installed debug build on the Pixel 7a emulator, opened Settings from Home, navigated to Stashes, and captured the screen after the seeded stash row rendered.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The screen should show <code>Fridge</code>, <code>2 items</code>, and the real <code>Add</code>, <code>Quick add</code>, <code>Start shopping session</code>, <code>Rename stash</code>, and <code>Delete stash</code> actions.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-management-real.png" alt="Android app Stashes screen showing the Fridge row with Add, Quick add, Start shopping session, Rename stash, and Delete stash actions">
+     <figcaption>Real app capture — live stash management row</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-management-real.png
+    exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="12" data-kind="single">
+   <p class="step-summary">Captured the shipped add-to-stash flow by opening <code>Fridge -> Add</code>, filtering to <code>Your food</code>, and drilling into <code>Skyr (FoodYou)</code> from the real search surface.</p>
+
+   <div class="step-how">
+     <p>From the real stash-management row, tapped <code>Add</code>, switched the food search source to <code>Your food</code>, opened the seeded <code>Skyr (FoodYou)</code> result, and captured both the list and the add-detail screen.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The search surface should show <code>Your food (2)</code> with <code>Skyr (FoodYou)</code> available, and the detail screen should expose the live measurement choices that can be saved into the stash.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-add-search-real.png" alt="Android app add-to-stash search showing the Your food filter selected and Skyr (FoodYou) listed as a result">
+     <figcaption>Real app capture — add-to-stash search using the Your food source</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-add-detail-real.png" alt="Android app add-product-to-stash screen showing Skyr with serving, package, 100 gram, and ounce measurement options">
+     <figcaption>Real app capture — add product to stash with live measurement choices</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-add-search-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-add-detail-real.png
+    exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="13" data-kind="single">
+   <p class="step-summary">Saved one serving of <code>Skyr (FoodYou)</code> into <code>Fridge</code>, verified the browser resolves live product and recipe names together, then consumed the newly added serving from the real consume screen.</p>
+
+   <div class="step-how">
+     <p>Saved the add-detail screen without changing the default one-serving amount, waited for the browser to load, opened the top <code>Skyr (FoodYou)</code> row via <code>Consume</code>, and then returned to the browser after the consume action completed.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The browser should first show the newly added <code>Skyr (FoodYou)</code> row together with the live <code>Pizza</code> recipe row, the consume screen should target the one-serving product entry, and the follow-up browser should show that one-serving row removed while the original <code>450 g</code> product entry remains.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-browser-after-add-real.png" alt="Android app stash browser showing the newly added Skyr row, the Pizza recipe row, and the original Skyr row together in Fridge">
+     <figcaption>Real app capture — browser after saving a new Skyr serving</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-consume-product-real.png" alt="Android app consume-from-stash screen for Skyr showing one serving remaining and the meal and date selectors">
+     <figcaption>Real app capture — consume the newly added Skyr serving</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-browser-after-consume-real.png" alt="Android app stash browser after consuming the one-serving Skyr row, leaving Pizza and the original 450 gram Skyr entry">
+     <figcaption>Real app capture — browser after consuming the added serving</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-browser-after-add-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-consume-product-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-browser-after-consume-real.png
+    exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="14" data-kind="single">
+   <p class="step-summary">Captured the real remove-item confirmation for the live <code>Pizza</code> recipe row directly from the stash browser.</p>
+
+   <div class="step-how">
+     <p>From the real browser state after the consume action, tapped <code>Remove</code> on the visible <code>Pizza</code> row and captured the confirmation dialog with the reason and note fields rendered by the shipped UI.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The dialog should target <code>Pizza</code> specifically and expose the manual removal reason/note fields for a recipe-backed stash item.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-remove-recipe-real.png" alt="Android app remove-item dialog asking to remove Pizza from the stash and showing reason and note fields">
+     <figcaption>Real app capture — remove confirmation for a recipe-backed stash row</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-remove-recipe-real.png
+    exit 0</code></pre>
+ </section>
 
 </body>
 </html>

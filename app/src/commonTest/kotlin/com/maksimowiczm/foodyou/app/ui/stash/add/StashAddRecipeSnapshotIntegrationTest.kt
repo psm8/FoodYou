@@ -4,8 +4,9 @@ import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotViewMod
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
+import com.maksimowiczm.foodyou.stash.domain.usecase.AddRecipeToStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeRecipeRepository
@@ -28,7 +29,7 @@ import kotlinx.coroutines.yield
 
 class StashAddRecipeSnapshotIntegrationTest {
     @Test
-    fun `when recipe is selected from unified add then snapshot stays immutable and diary stays unchanged`() = runBlocking {
+    fun `when recipe is selected from unified add then recipe ref stores batch context and diary stays unchanged`() = runBlocking {
         val stashId = StashDefinitionId(7L)
         val selectedDestination =
             StashAddDestination.from(
@@ -49,14 +50,17 @@ class StashAddRecipeSnapshotIntegrationTest {
                 recipeRepository = recipeRepository,
                 stashRepository = stashRepository,
                 stashOwnerProvider = localOwnerProvider(),
-                createAnonymousDishSnapshotUseCase =
-                    CreateAnonymousDishSnapshotUseCase(
-                        recipeRepository = recipeRepository,
-                        stashRepository = stashRepository,
-                        stashOwnerProvider = localOwnerProvider(),
-                        transactionProvider = transactionProvider,
-                        dateProvider = FixedDateProvider(),
-                        logger = NoOpLogger,
+                addRecipeToStashUseCase =
+                    AddRecipeToStashUseCase(
+                        createAnonymousDishSnapshotUseCase =
+                            CreateAnonymousDishSnapshotUseCase(
+                                recipeRepository = recipeRepository,
+                                stashRepository = stashRepository,
+                                stashOwnerProvider = localOwnerProvider(),
+                                transactionProvider = transactionProvider,
+                                dateProvider = FixedDateProvider(),
+                                logger = NoOpLogger,
+                            )
                     ),
                 coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
@@ -70,21 +74,12 @@ class StashAddRecipeSnapshotIntegrationTest {
         viewModel.save()
         yield()
 
-        val storedSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
+        val storedRef = assertIs<StashFoodRef.Recipe>(stashRepository.allItems().single().foodRef)
         assertEquals(stashId, stashRepository.allItems().single().stashId)
-        assertEquals(Measurement.Serving(2.0), storedSnapshot.totalAmount)
-        assertEquals(800.0, storedSnapshot.totalWeight)
+        assertEquals(Measurement.Serving(2.0), storedRef.totalAmount)
+        assertEquals(800.0, storedRef.totalWeight)
         assertEquals(emptyList<FoodDiaryEntry>(), diaryRepository.allEntries())
-
-        recipeRepository.updateRecipe(
-            sampleRecipe(id = 1L, name = "Edited pizza", servings = 4, totalWeight = 1000.0)
-        )
-
-        val persistedSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals("Pizza", persistedSnapshot.name)
-        assertEquals(Measurement.Serving(2.0), persistedSnapshot.totalAmount)
-        assertEquals(800.0, persistedSnapshot.totalWeight)
-        assertEquals(storedSnapshot.nutritionFacts, persistedSnapshot.nutritionFacts)
+        assertEquals(FoodId.Recipe(1L), storedRef.recipeId)
     }
 
     @Test

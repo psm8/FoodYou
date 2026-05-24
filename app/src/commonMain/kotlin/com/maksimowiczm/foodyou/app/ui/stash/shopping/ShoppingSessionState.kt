@@ -28,24 +28,20 @@ internal data class ShoppingSessionSelectedProduct(
 ) {
     fun toStashQuantityOrNull(measurement: Measurement?): StashMeasurement? {
         val selectedMeasurement = measurement ?: return null
-        val weight =
+        val isSupported =
             when (selectedMeasurement) {
-                is Measurement.Gram -> selectedMeasurement.value
-                is Measurement.Milliliter -> selectedMeasurement.value
-                is Measurement.Ounce -> selectedMeasurement.metric
-                is Measurement.FluidOunce -> selectedMeasurement.metric
-                is Measurement.Package -> totalWeight?.times(selectedMeasurement.quantity)
-                is Measurement.Serving -> servingWeight?.times(selectedMeasurement.quantity)
+                is Measurement.Gram -> !isLiquid
+                is Measurement.Ounce -> !isLiquid
+                is Measurement.Milliliter -> isLiquid
+                is Measurement.FluidOunce -> isLiquid
+                is Measurement.Package -> totalWeight != null && totalWeight > 0.0
+                is Measurement.Serving -> servingWeight != null && servingWeight > 0.0
             }
-        if (weight == null || weight <= 0.0) {
+        if (!isSupported || !selectedMeasurement.rawValue.isFinite() || selectedMeasurement.rawValue <= 0.0) {
             return null
         }
 
-        return if (isLiquid) {
-            StashMeasurement.milliliters(weight)
-        } else {
-            StashMeasurement.grams(weight)
-        }
+        return StashMeasurement(selectedMeasurement)
     }
 
     companion object {
@@ -97,7 +93,7 @@ internal data class ShoppingSessionListItem(
     internal val sessionItem: ShoppingSessionItem,
 ) {
     val name: String
-        get() = sessionItem.snapshot.name
+        get() = sessionItem.productDetails.name
 
     val measurement: Measurement
         get() = sessionItem.measurement.measurement
@@ -107,11 +103,14 @@ internal data class ShoppingSessionListItem(
 
     val totalCalories: Double
         get() =
-            (sessionItem.snapshot.nutritionFacts.energy.value ?: 0.0) *
-                (parsedQuantityAmount / 100.0)
+            (sessionItem.productDetails.nutritionFacts.energy.value ?: 0.0) *
+                (sessionItem.productDetails.metricAmount(currentMeasurement) / 100.0)
 
-    private val parsedQuantityAmount: Double
-        get() = quantityText.toDoubleOrNull() ?: sessionItem.measurement.measurement.rawValue
+    private val currentMeasurement: Measurement
+        get() =
+            quantityUnit
+                .toQuantityOrNull(quantityText)
+                ?.measurement ?: sessionItem.measurement.measurement
 
     fun updateQuantity(quantityText: String): ShoppingSessionListItem {
         val quantity = quantityUnit.toQuantityOrNull(quantityText)

@@ -1,13 +1,15 @@
 package com.maksimowiczm.foodyou.app.ui.home.stash
 
 import androidx.compose.runtime.Immutable
+import com.maksimowiczm.foodyou.app.ui.stash.StashFoodDisplay
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummary
 
 @Immutable
 internal data class HomeStashCardUiState(
+    val isLoading: Boolean = false,
     val isVisible: Boolean = false,
     val totalItemCount: Int = 0,
     val stashNames: List<String> = emptyList(),
@@ -15,17 +17,22 @@ internal data class HomeStashCardUiState(
     val recentItems: List<HomeStashCardItemUi> = emptyList(),
 ) {
     companion object {
-        fun from(summary: HomeStashSummary?): HomeStashCardUiState {
+        fun from(
+            summary: HomeStashSummary?,
+            recentItems: List<HomeStashCardItemUi> = emptyList(),
+            isLoading: Boolean = false,
+        ): HomeStashCardUiState {
             if (summary == null) {
-                return HomeStashCardUiState()
+                return HomeStashCardUiState(isLoading = isLoading)
             }
 
             return HomeStashCardUiState(
+                isLoading = isLoading,
                 isVisible = true,
                 totalItemCount = summary.totalItemCount,
                 stashNames = summary.stashes.map { it.name },
                 preferredStashId = summary.recentItems.firstOrNull()?.stashId ?: summary.stashes.firstOrNull()?.id,
-                recentItems = summary.recentItems.map(HomeStashCardItemUi::from),
+                recentItems = recentItems,
             )
         }
     }
@@ -33,16 +40,21 @@ internal data class HomeStashCardUiState(
 
 @Immutable
 internal data class HomeStashCardItemUi(
-    val id: StashItemId,
+    val id: StashEntryId,
     val name: String,
+    val isLoading: Boolean,
     val stashName: String,
     val quantity: StashMeasurement,
 ) {
     companion object {
-        fun from(item: com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummaryItem) =
+        fun from(
+            item: com.maksimowiczm.foodyou.stash.domain.usecase.HomeStashSummaryItem,
+            display: StashFoodDisplay,
+        ) =
             HomeStashCardItemUi(
                 id = item.id,
-                name = item.name,
+                name = display.name,
+                isLoading = display.isLoading,
                 stashName = item.stashName,
                 quantity = item.measurement,
             )

@@ -3,8 +3,9 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
@@ -27,8 +28,8 @@ data class HomeStashSummaryStash(
 )
 
 data class HomeStashSummaryItem(
-    val id: StashItemId,
-    val name: String,
+    val id: StashEntryId,
+    val foodRef: StashFoodRef,
     val stashId: StashDefinitionId,
     val stashName: String,
     val measurement: StashMeasurement,
@@ -49,7 +50,7 @@ class ObserveHomeStashSummaryUseCase(
                 return@flatMapLatest flowOf(null)
             }
 
-            combine(orderedStashes.map { stashRepository.observeStashContents(it.id) }) { itemsByStash: Array<List<StashItem>> ->
+            combine(orderedStashes.map { stashRepository.observeStashContents(it.id) }) { itemsByStash: Array<List<StashEntry>> ->
                 buildHomeStashSummary(
                     stashes = orderedStashes,
                     itemsByStash = itemsByStash.toList(),
@@ -66,7 +67,7 @@ class ObserveHomeStashSummaryUseCase(
 
 internal fun buildHomeStashSummary(
     stashes: List<StashDefinition>,
-    itemsByStash: List<List<StashItem>>,
+    itemsByStash: List<List<StashEntry>>,
     recentItemLimit: Int = 5,
 ): HomeStashSummary? {
     val normalizedRecentItemLimit = recentItemLimit.coerceIn(3, 5)
@@ -87,7 +88,7 @@ internal fun buildHomeStashSummary(
                 availableItemsByStash.getOrElse(index) { emptyList() }.map { item ->
                     HomeStashSummaryItem(
                         id = item.id,
-                        name = item.snapshot.name,
+                        foodRef = item.foodRef,
                         stashId = stash.id,
                         stashName = stash.name.value,
                         measurement = item.measurement,
@@ -111,4 +112,3 @@ internal fun buildHomeStashSummary(
         recentItems = recentItems,
     )
 }
-

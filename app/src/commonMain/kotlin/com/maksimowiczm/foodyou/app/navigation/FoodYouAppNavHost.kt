@@ -52,7 +52,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -170,7 +170,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             val (itemId) = it.toRoute<ConsumeStashItem>()
 
             ConsumeStashItemScreen(
-                itemId = StashItemId(itemId),
+                itemId = StashEntryId(itemId),
                 onBack = { navController.popBackStackInclusive<ConsumeStashItem>() },
                 onConsumed = { navController.popBackStackInclusive<ConsumeStashItem>() },
             )

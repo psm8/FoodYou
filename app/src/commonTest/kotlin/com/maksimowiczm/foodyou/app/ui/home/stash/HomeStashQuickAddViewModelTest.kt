@@ -2,8 +2,10 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateManualStashSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.FakeProductRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeTransactionProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.FixedDateProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.NoOpLogger
@@ -58,7 +60,8 @@ class HomeStashQuickAddViewModelTest {
     @Test
     fun `when quick add saves successfully, it emits saved event with target stash`() = runBlocking {
         val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash(id = 7L)))
-        val viewModel = quickAddViewModel(stashRepository = stashRepository)
+        val productRepository = FakeProductRepository()
+        val viewModel = quickAddViewModel(stashRepository = stashRepository, productRepository = productRepository)
 
         yield()
         viewModel.save(
@@ -68,10 +71,15 @@ class HomeStashQuickAddViewModelTest {
         )
 
         assertEquals(HomeStashQuickAddEvent.Saved(sampleStash(id = 7L).id), viewModel.events.first())
+        assertEquals(
+            FoodId.Product(1L),
+            productRepository.allProducts().single().id,
+        )
     }
 
     private fun quickAddViewModel(
         stashRepository: FakeStashRepository = FakeStashRepository(),
+        productRepository: FakeProductRepository = FakeProductRepository(),
     ): HomeStashQuickAddViewModel =
         HomeStashQuickAddViewModel(
             preferredStashId = null,
@@ -79,6 +87,7 @@ class HomeStashQuickAddViewModelTest {
             stashOwnerProvider = localOwnerProvider(),
             createManualStashSnapshotUseCase =
                 CreateManualStashSnapshotUseCase(
+                    productRepository = productRepository,
                     stashRepository = stashRepository,
                     stashOwnerProvider = localOwnerProvider(),
                     transactionProvider = FakeTransactionProvider(),

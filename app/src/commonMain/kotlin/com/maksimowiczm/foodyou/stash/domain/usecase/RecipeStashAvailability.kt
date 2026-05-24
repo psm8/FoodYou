@@ -7,8 +7,8 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 
 enum class IngredientAvailabilityStatus {
@@ -24,7 +24,7 @@ enum class StashSubtractionMode {
 }
 
 data class IngredientStashAllocation(
-    val item: StashItem,
+    val item: StashEntry,
     val measurement: StashMeasurement,
 )
 
@@ -118,16 +118,14 @@ private fun RecipeIngredient.toProductRequirements(): List<ProductRequirement> {
 internal fun buildRecipeStashAvailability(
     recipe: Recipe,
     measurement: Measurement,
-    candidateItems: List<StashItem>,
+    candidateItems: List<StashEntry>,
 ): RecipeStashAvailability {
     val itemsByProductId =
         candidateItems
             .mapNotNull { item ->
-                val snapshot = item.snapshot
-                if (snapshot is RawProductSnapshot) {
-                    snapshot.productId?.let { productId -> productId to item }
-                } else {
-                    null
+                when (val foodRef = item.foodRef) {
+                    is StashFoodRef.Product -> foodRef.productId to item
+                    is StashFoodRef.Recipe -> null
                 }
             }.groupBy(
                 keySelector = { it.first },
@@ -145,14 +143,14 @@ internal fun buildRecipeStashAvailability(
 }
 
 private fun ProductRequirement.toAvailability(
-    candidateItems: List<StashItem>,
+    candidateItems: List<StashEntry>,
 ): RecipeIngredientStashAvailability {
     var remainingRawValue = measurement.measurement.rawValue
     val allocations = mutableListOf<IngredientStashAllocation>()
 
     candidateItems
         .filter { item -> item.measurement.type == measurement.type }
-        .sortedBy(StashItem::createdAt)
+        .sortedBy(StashEntry::createdAt)
         .forEach { item ->
             if (remainingRawValue <= EPSILON) {
                 return@forEach
@@ -190,4 +188,3 @@ private fun StashMeasurement.zero(): StashMeasurement =
     StashMeasurement(Measurement.from(type, 0.0))
 
 private const val EPSILON = 0.000001
-

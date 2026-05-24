@@ -6,12 +6,13 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionId
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionProductDetails
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import kotlin.test.Test
@@ -73,6 +74,8 @@ class ShoppingSessionUseCaseTest {
         assertEquals(1, updated.items.size)
         assertEquals(250.0, updated.totalNutritionFacts.energy.value)
         assertEquals(FoodId.Product(1), updated.items.single().productId)
+        assertEquals(StashFoodRef.Product(FoodId.Product(1)), updated.items.single().foodRef)
+        assertEquals("Skyr (FoodYou)", updated.items.single().productDetails.name)
         assertEquals(StashMeasurement(Measurement.Gram(250.0)), updated.items.single().measurement)
     }
 
@@ -194,6 +197,16 @@ class ShoppingSessionUseCaseTest {
         assertEquals(5, stashRepository.allMovements().size)
         assertEquals(
             listOf(
+                StashFoodRef.Product(FoodId.Product(1L)),
+                StashFoodRef.Product(FoodId.Product(2L)),
+                StashFoodRef.Product(FoodId.Product(3L)),
+                StashFoodRef.Product(FoodId.Product(4L)),
+                StashFoodRef.Product(FoodId.Product(5L)),
+            ),
+            stashRepository.allItems().map { it.foodRef },
+        )
+        assertEquals(
+            listOf(
                 StashMeasurement(Measurement.Package(1.5)),
                 StashMeasurement(Measurement.Gram(500.0)),
                 StashMeasurement(Measurement.Serving(1.0)),
@@ -235,21 +248,24 @@ class ShoppingSessionUseCaseTest {
                     listOf(
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("session-item-1"),
-                            productId = FoodId.Product(1),
-                            snapshot = RawProductSnapshot.from(sampleProduct()),
+                            foodRef = StashFoodRef.Product(FoodId.Product(1)),
+                            productDetails = ShoppingSessionProductDetails.from(sampleProduct()),
                             measurement = StashMeasurement.grams(200.0),
                         ),
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("session-item-2"),
-                            productId = FoodId.Product(2),
-                            snapshot = RawProductSnapshot.from(sampleProduct(id = 2, name = "Yoghurt")),
+                            foodRef = StashFoodRef.Product(FoodId.Product(2)),
+                            productDetails =
+                                ShoppingSessionProductDetails.from(
+                                    sampleProduct(id = 2, name = "Yoghurt"),
+                                ),
                             measurement = StashMeasurement.grams(150.0),
                         ),
                     ),
             )
 
         val failure =
-            assertIs<com.maksimowiczm.foodyou.common.result.Result.Error<List<StashItemId>, ConfirmShoppingSessionError>>(
+            assertIs<com.maksimowiczm.foodyou.common.result.Result.Error<List<StashEntryId>, ConfirmShoppingSessionError>>(
                 confirmUseCase.confirm(session)
             )
 

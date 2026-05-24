@@ -1,14 +1,18 @@
 package com.maksimowiczm.foodyou.app.ui.stash.consume
 
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ConsumeFromStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeMealRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.FakeProductRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.FakeRecipeRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeTransactionProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.FixedDateProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.NoOpLogger
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleMeal
+import com.maksimowiczm.foodyou.stash.domain.usecase.sampleProduct
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash
 import kotlin.test.Test
@@ -40,9 +44,16 @@ class ConsumeStashItemViewModelTest {
                     stashRepository = stashRepository,
                     mealRepository = mealRepository,
                     dateProvider = FixedDateProvider(),
+                    observeFoodUseCase =
+                        ObserveFoodUseCase(
+                            productRepository = FakeProductRepository(listOf(sampleProduct())),
+                            recipeRepository = FakeRecipeRepository(),
+                        ),
                     consumeFromStashUseCase =
                         ConsumeFromStashUseCase(
                             stashRepository = stashRepository,
+                            productRepository = FakeProductRepository(listOf(sampleProduct())),
+                            recipeRepository = FakeRecipeRepository(),
                             entryRepository = diaryRepository,
                             mealRepository = mealRepository,
                             transactionProvider = FakeTransactionProvider(),
@@ -60,6 +71,7 @@ class ConsumeStashItemViewModelTest {
             viewModel.updateAmount("100")
 
             assertTrue(viewModel.state.value.canSave)
+            assertEquals("Skyr (FoodYou)", viewModel.state.value.itemName)
 
             viewModel.consume()
             yield()

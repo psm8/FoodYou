@@ -47,10 +47,9 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipDatab
 import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDatabase
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDefinitionEntity
-import com.maksimowiczm.foodyou.stash.infrastructure.room.StashItemEntity
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMeasurementEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementEntity
 import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementOperationTypeConverter
-import com.maksimowiczm.foodyou.stash.infrastructure.room.StashSnapshotTypeConverter
 
 @Database(
     entities =
@@ -73,7 +72,7 @@ import com.maksimowiczm.foodyou.stash.infrastructure.room.StashSnapshotTypeConve
             ProductFts::class,
             RecipeFts::class,
             StashDefinitionEntity::class,
-            StashItemEntity::class,
+            StashMeasurementEntity::class,
             StashMovementEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
@@ -133,7 +132,6 @@ import com.maksimowiczm.foodyou.stash.infrastructure.room.StashSnapshotTypeConve
     MeasurementTypeConverter::class,
     FoodEventTypeConverter::class,
     StashMovementOperationTypeConverter::class,
-    StashSnapshotTypeConverter::class,
 )
 abstract class FoodYouDatabase :
     RoomDatabase(),
