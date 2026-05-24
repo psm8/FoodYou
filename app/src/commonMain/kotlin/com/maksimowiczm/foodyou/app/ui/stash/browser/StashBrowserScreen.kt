@@ -63,15 +63,9 @@ fun StashBrowserScreen(
         onRemoveItem = viewModel::requestRemove,
         onManualAdjustItem = viewModel::requestManualAdjust,
         onMoveItem = viewModel::requestMove,
-        onRemoveReasonChange = viewModel::updateRemoveReason,
-        onRemoveNoteChange = viewModel::updateRemoveNote,
         onAdjustAmountChange = viewModel::updateManualAdjustAmount,
-        onAdjustReasonChange = viewModel::updateManualAdjustReason,
-        onAdjustNoteChange = viewModel::updateManualAdjustNote,
         onAdjustModeChange = viewModel::updateManualAdjustMode,
         onMoveTargetChange = viewModel::updateMoveTarget,
-        onMoveReasonChange = viewModel::updateMoveReason,
-        onMoveNoteChange = viewModel::updateMoveNote,
         onDismissActionDialog = viewModel::dismissActionDialog,
         onConfirmAction = { viewModel.confirmAction() },
         modifier = modifier,
@@ -88,15 +82,9 @@ private fun StashBrowserScreen(
     onRemoveItem: (StashBrowserItem) -> Unit,
     onManualAdjustItem: (StashBrowserItem) -> Unit,
     onMoveItem: (StashBrowserItem) -> Unit,
-    onRemoveReasonChange: (String) -> Unit,
-    onRemoveNoteChange: (String) -> Unit,
     onAdjustAmountChange: (String) -> Unit,
-    onAdjustReasonChange: (String) -> Unit,
-    onAdjustNoteChange: (String) -> Unit,
     onAdjustModeChange: (StashBrowserAdjustMode) -> Unit,
     onMoveTargetChange: (StashDefinitionId?) -> Unit,
-    onMoveReasonChange: (String) -> Unit,
-    onMoveNoteChange: (String) -> Unit,
     onDismissActionDialog: () -> Unit,
     onConfirmAction: suspend () -> Unit,
     modifier: Modifier = Modifier,
@@ -110,8 +98,6 @@ private fun StashBrowserScreen(
             is StashBrowserActionDialog.Remove ->
                 RemoveItemDialog(
                     dialog = dialog,
-                    onReasonChange = onRemoveReasonChange,
-                    onNoteChange = onRemoveNoteChange,
                     onDismissRequest = onDismissActionDialog,
                     onConfirm = { coroutineScope.launch { onConfirmAction() } },
                 )
@@ -120,8 +106,6 @@ private fun StashBrowserScreen(
                 ManualAdjustDialog(
                     dialog = dialog,
                     onAmountChange = onAdjustAmountChange,
-                    onReasonChange = onAdjustReasonChange,
-                    onNoteChange = onAdjustNoteChange,
                     onModeChange = onAdjustModeChange,
                     onDismissRequest = onDismissActionDialog,
                     onConfirm = { coroutineScope.launch { onConfirmAction() } },
@@ -132,8 +116,6 @@ private fun StashBrowserScreen(
                     dialog = dialog,
                     moveTargets = state.moveTargets,
                     onTargetChange = onMoveTargetChange,
-                    onReasonChange = onMoveReasonChange,
-                    onNoteChange = onMoveNoteChange,
                     onDismissRequest = onDismissActionDialog,
                     onConfirm = { coroutineScope.launch { onConfirmAction() } },
                 )
@@ -312,8 +294,6 @@ private fun ItemTypeBadge(type: StashBrowserItemType) {
 @Composable
 private fun RemoveItemDialog(
     dialog: StashBrowserActionDialog.Remove,
-    onReasonChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -321,24 +301,10 @@ private fun RemoveItemDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(Res.string.headline_remove_item)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = stringResource(Res.string.description_remove_item_confirmation, dialog.item.name),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                OutlinedTextField(
-                    value = dialog.reason,
-                    onValueChange = onReasonChange,
-                    label = { Text(stringResource(Res.string.label_action_reason)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = dialog.note,
-                    onValueChange = onNoteChange,
-                    label = { Text(stringResource(Res.string.label_action_note)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            Text(
+                text = stringResource(Res.string.description_remove_item_confirmation, dialog.item.name),
+                style = MaterialTheme.typography.bodyMedium,
+            )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
@@ -357,8 +323,6 @@ private fun RemoveItemDialog(
 private fun ManualAdjustDialog(
     dialog: StashBrowserActionDialog.ManualAdjust,
     onAmountChange: (String) -> Unit,
-    onReasonChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
     onModeChange: (StashBrowserAdjustMode) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
@@ -366,7 +330,7 @@ private fun ManualAdjustDialog(
     val parsedQuantity = remember(dialog.amount, dialog.item.quantity.type) {
         dialog.item.quantity.type.toMeasurementOrNull(dialog.amount)
     }
-    val canConfirm = parsedQuantity != null && dialog.reason.trim().isNotEmpty()
+    val canConfirm = parsedQuantity != null
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -375,32 +339,20 @@ private fun ManualAdjustDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
-                        selected = dialog.mode == StashBrowserAdjustMode.ChangeBy,
-                        onClick = { onModeChange(StashBrowserAdjustMode.ChangeBy) },
-                        label = { Text(stringResource(Res.string.label_action_mode_change_by)) },
-                    )
-                    FilterChip(
                         selected = dialog.mode == StashBrowserAdjustMode.SetTo,
                         onClick = { onModeChange(StashBrowserAdjustMode.SetTo) },
                         label = { Text(stringResource(Res.string.label_action_mode_set_to)) },
+                    )
+                    FilterChip(
+                        selected = dialog.mode == StashBrowserAdjustMode.ChangeBy,
+                        onClick = { onModeChange(StashBrowserAdjustMode.ChangeBy) },
+                        label = { Text(stringResource(Res.string.label_action_mode_change_by)) },
                     )
                 }
                 OutlinedTextField(
                     value = dialog.amount,
                     onValueChange = onAmountChange,
                     label = { Text(stringResource(Res.string.label_action_amount)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = dialog.reason,
-                    onValueChange = onReasonChange,
-                    label = { Text(stringResource(Res.string.label_action_reason)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = dialog.note,
-                    onValueChange = onNoteChange,
-                    label = { Text(stringResource(Res.string.label_action_note)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -423,8 +375,6 @@ private fun MoveItemDialog(
     dialog: StashBrowserActionDialog.Move,
     moveTargets: List<StashBrowserMoveTarget>,
     onTargetChange: (StashDefinitionId?) -> Unit,
-    onReasonChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -458,18 +408,6 @@ private fun MoveItemDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = dialog.reason,
-                    onValueChange = onReasonChange,
-                    label = { Text(stringResource(Res.string.label_action_reason)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = dialog.note,
-                    onValueChange = onNoteChange,
-                    label = { Text(stringResource(Res.string.label_action_note)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         },
         confirmButton = {

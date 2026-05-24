@@ -12,7 +12,7 @@ An Android food tracking app (KMP/Compose Multiplatform) with a diary module and
 
 **StashMeasurement**: A `Measurement` wrapped with same-type arithmetic (`+`, `-`, `negate()`). Lives in `stash.domain.entity`. Enforces that only measurements of the same type can be combined. Supports all 6 MeasurementTypes (Gram, Milliliter, Ounce, FluidOunce, Package, Serving) — full alignment with the diary module.
 
-**StashMovement**: An audit ledger entry recording how and why a stash entry's measurement changed. Carries `measurementChange` (signed `StashMeasurement`) and `operation` (the lifecycle event type).
+**StashMovement**: An audit ledger entry recording how a stash entry's measurement changed. Carries `measurementChange` (signed `StashMeasurement`) and `operation` (the lifecycle event type). The `note` field is reserved for auto-generated descriptions (e.g. move operations write `"Moved to X"` / `"Moved from X"`); manual adjust and remove actions set `note = null`.
 
 **Measurement**: A sealed interface in `common.domain.measurement` representing a user-facing quantity (`Gram(150)`, `Serving(2)`, `Package(3)`, etc.). Not domain-specific — used by both diary and stash modules. Supports `times(Double)` but NOT arithmetic between measurements.
 
@@ -32,6 +32,13 @@ An Android food tracking app (KMP/Compose Multiplatform) with a diary module and
 - A **ShoppingSession** confirms into **StashEntry**s and **StashMovement**s
 - **StashFoodRef.Product** references a catalog **Product** by ID — all metadata is read live
 - **StashFoodRef.Recipe** references a catalog **Recipe** by ID, plus frozen batch context (**totalWeight**, **totalAmount**) — recipe metadata is read live, batch amounts are captured at creation
+
+## Resolved decisions (beyond ambiguities)
+
+- **Adjust mode default**: `SetTo` is the default mode for stash quantity adjustment (changed from `ChangeBy`). Reasoning: "I have 500g left" is the natural mental model; `ChangeBy` requires mental arithmetic. `ChangeBy` remains available as a secondary option. Amount field is pre-filled based on mode: current quantity for `SetTo`, empty/zero for `ChangeBy`.
+- **Manual action reason/note removed**: The `ManualStashAction` class (carrying `reason` + `note`) is eliminated. Adjust and remove actions no longer require user-supplied text. The `StashMovement.note` field stays for auto-generated notes from move operations (`"Moved to X"`, `"Moved from X"`); manual adjust and remove set it to `null`. No screen in the app currently reads movement notes.
+- **Remove and Move keep confirmation dialogs**: Remove shows a confirm/cancel dialog (destructive). Move shows a stash selector + confirm/cancel dialog. Both are streamlined — no reason/note text fields.
+- **Adjust dialog simplified**: Only mode selector (`SetTo`/`ChangeBy`) and amount field remain. No reason or note fields.
 
 ## Flagged ambiguities (all resolved)
 

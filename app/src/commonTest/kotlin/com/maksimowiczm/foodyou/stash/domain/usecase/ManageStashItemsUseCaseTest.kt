@@ -12,7 +12,7 @@ class ManageStashItemsUseCaseTest {
     private val transactionProvider = FakeTransactionProvider()
 
     @Test
-    fun `when manually setting quantity, it updates the item and records a note`() =
+    fun `when manually setting quantity, it updates the item and records a null note`() =
         runBlocking {
             val item = sampleRawProductItem(measurement = StashMeasurement.grams(500.0))
             val repository =
@@ -33,14 +33,13 @@ class ManageStashItemsUseCaseTest {
                 useCase.adjust(
                     itemId = item.id,
                     adjustment = StashMeasurementAdjustment.SetTo(StashMeasurement.grams(300.0)),
-                    action = ManualStashAction(reason = "Spoilage", note = "Trimmed moldy edge"),
                 )
 
             val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(300.0, updated.measurement.measurement.rawValue)
             val movement = repository.allMovements().single()
             assertEquals(-200.0, movement.measurementChange.measurement.rawValue)
-            assertEquals("Spoilage\nTrimmed moldy edge", movement.note)
+            assertEquals(null, movement.note)
         }
 
     @Test
@@ -65,7 +64,6 @@ class ManageStashItemsUseCaseTest {
                 useCase.adjust(
                     itemId = item.id,
                     adjustment = StashMeasurementAdjustment.ChangeBy(StashMeasurement.grams(-500.0)),
-                    action = ManualStashAction(reason = "Correction"),
                 )
 
             val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
@@ -75,7 +73,7 @@ class ManageStashItemsUseCaseTest {
             assertEquals(StashMeasurement.grams(0.0), repository.allItems().single().measurement)
             val movement = repository.allMovements().single()
             assertEquals(StashMeasurement.grams(-500.0), movement.measurementChange)
-            assertEquals("Correction", movement.note)
+            assertEquals(null, movement.note)
         }
 
     @Test
@@ -100,7 +98,6 @@ class ManageStashItemsUseCaseTest {
                 useCase.adjust(
                     itemId = item.id,
                     adjustment = StashMeasurementAdjustment.ChangeBy(StashMeasurement.servings(-1.0)),
-                    action = ManualStashAction(reason = "Finished"),
                 )
 
             val updated = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
@@ -108,7 +105,7 @@ class ManageStashItemsUseCaseTest {
             assertEquals(emptyList(), repository.allItems())
             val movement = repository.allMovements().single()
             assertEquals(StashMeasurement.servings(-1.0), movement.measurementChange)
-            assertEquals("Finished", movement.note)
+            assertEquals(null, movement.note)
         }
 
     @Test
@@ -132,7 +129,6 @@ class ManageStashItemsUseCaseTest {
             val result =
                 useCase.remove(
                     itemId = item.id,
-                    action = ManualStashAction(reason = "Discarded", note = "Expired yesterday"),
                 )
 
             val removed = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
@@ -142,7 +138,7 @@ class ManageStashItemsUseCaseTest {
             assertEquals(item.foodRef, repository.allItems().single().foodRef)
             val movement = repository.allMovements().single()
             assertEquals(-250.0, movement.measurementChange.measurement.rawValue)
-            assertEquals("Discarded\nExpired yesterday", movement.note)
+            assertEquals(null, movement.note)
         }
 
     @Test
@@ -200,7 +196,6 @@ class ManageStashItemsUseCaseTest {
                 useCase.adjust(
                     itemId = item.id,
                     adjustment = StashMeasurementAdjustment.SetTo(StashMeasurement.servings(1.0)),
-                    action = ManualStashAction(reason = "Correction"),
                 )
 
             assertEquals(

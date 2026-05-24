@@ -7,7 +7,6 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
-import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import kotlinx.datetime.LocalDateTime
 
 internal enum class StashBrowserSortOption {
@@ -68,46 +67,18 @@ internal data class StashBrowserMoveTarget(
 internal sealed interface StashBrowserActionDialog {
     data class Remove(
         val item: StashBrowserItem,
-        val reason: String = "",
-        val note: String = "",
-    ) : StashBrowserActionDialog {
-        fun toManualAction(): ManualStashAction =
-            ManualStashAction(
-                reason = reason.normalizedOrDefault("Remove item"),
-                note = note.trim(),
-            )
-    }
+    ) : StashBrowserActionDialog
 
     data class ManualAdjust(
         val item: StashBrowserItem,
         val amount: String = "",
-        val reason: String = "",
-        val note: String = "",
-        val mode: StashBrowserAdjustMode = StashBrowserAdjustMode.ChangeBy,
-    ) : StashBrowserActionDialog {
-        fun toManualAction(): ManualStashAction =
-            ManualStashAction(
-                reason = reason.normalizedOrDefault("Adjust item"),
-                note = note.trim(),
-            )
-    }
+        val mode: StashBrowserAdjustMode = StashBrowserAdjustMode.SetTo,
+    ) : StashBrowserActionDialog
 
     data class Move(
         val item: StashBrowserItem,
         val targetStashId: StashDefinitionId? = null,
-        val reason: String = "",
-        val note: String = "",
-    ) : StashBrowserActionDialog {
-        fun toManualAction(targetStashName: String?): ManualStashAction =
-            ManualStashAction(
-                reason =
-                    reason.normalizedOrDefault(
-                        targetStashName?.let { "Move to $it" } ?: "Move item"
-                    ),
-                note = note.trim(),
-            )
-    }
-
+    ) : StashBrowserActionDialog
 }
 
 internal data class StashBrowserState(
@@ -143,32 +114,23 @@ internal data class StashBrowserState(
 
     fun dismissActionDialog(): StashBrowserState = copy(actionDialog = null)
 
-    fun updateRemoveReason(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.Remove> { copy(reason = value) })
-
-    fun updateRemoveNote(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.Remove> { copy(note = value) })
-
     fun updateManualAdjustAmount(value: String): StashBrowserState =
         copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.ManualAdjust> { copy(amount = value) })
 
-    fun updateManualAdjustReason(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.ManualAdjust> { copy(reason = value) })
-
-    fun updateManualAdjustNote(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.ManualAdjust> { copy(note = value) })
-
     fun updateManualAdjustMode(mode: StashBrowserAdjustMode): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.ManualAdjust> { copy(mode = mode) })
+        copy(
+            actionDialog = actionDialog.updateIf<StashBrowserActionDialog.ManualAdjust> {
+                val resetAmount =
+                    when (mode) {
+                        StashBrowserAdjustMode.SetTo -> item.quantity.measurement.rawValue.toString()
+                        StashBrowserAdjustMode.ChangeBy -> ""
+                    }
+                copy(mode = mode, amount = resetAmount)
+            }
+        )
 
     fun updateMoveTarget(targetStashId: StashDefinitionId?): StashBrowserState =
         copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.Move> { copy(targetStashId = targetStashId) })
-
-    fun updateMoveReason(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.Move> { copy(reason = value) })
-
-    fun updateMoveNote(value: String): StashBrowserState =
-        copy(actionDialog = actionDialog.updateIf<StashBrowserActionDialog.Move> { copy(note = value) })
 
     private fun List<StashBrowserItem>.filterByQuery(query: String): List<StashBrowserItem> {
         val normalizedQuery = query.trim()
@@ -218,5 +180,3 @@ private inline fun <reified T : StashBrowserActionDialog> StashBrowserActionDial
     if (this !is T) return this
     return transform(this)
 }
-
-private fun String.normalizedOrDefault(default: String): String = trim().ifEmpty { default }
