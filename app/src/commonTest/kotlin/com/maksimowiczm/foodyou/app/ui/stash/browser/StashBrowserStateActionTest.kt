@@ -2,7 +2,6 @@ package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
-import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,15 +19,14 @@ class StashBrowserStateActionTest {
     }
 
     @Test
-    fun `when starting manual adjust action, it pre-fills the amount from the item`() {
+    fun `when starting manual adjust action, it pre-fills the amount from the item and defaults to SetTo`() {
         val item = browserItem(id = 1L, quantity = StashMeasurement.grams(250.0))
 
         val state = browserState().showManualAdjustDialog(item)
 
         val dialog = assertIs<StashBrowserActionDialog.ManualAdjust>(state.actionDialog)
         assertEquals("250.0", dialog.amount)
-        assertEquals(StashBrowserAdjustMode.ChangeBy, dialog.mode)
-        assertEquals("", dialog.reason)
+        assertEquals(StashBrowserAdjustMode.SetTo, dialog.mode)
     }
 
     @Test
@@ -43,31 +41,29 @@ class StashBrowserStateActionTest {
     }
 
     @Test
-    fun `when building manual adjust action, it keeps entered reason and note`() {
-        val dialog =
-            StashBrowserActionDialog.ManualAdjust(
-                item = browserItem(id = 1L),
-                reason = " Pantry recount ",
-                note = " Settled after cleanup ",
-            )
+    fun `when switching mode from SetTo to ChangeBy, amount resets to empty`() {
+        val item = browserItem(id = 1L, quantity = StashMeasurement.grams(250.0))
+        val state = browserState().showManualAdjustDialog(item)
 
-        val action = dialog.toManualAction()
+        val updated = state.updateManualAdjustMode(StashBrowserAdjustMode.ChangeBy)
 
-        assertEquals(ManualStashAction(reason = "Pantry recount", note = "Settled after cleanup"), action)
+        val dialog = assertIs<StashBrowserActionDialog.ManualAdjust>(updated.actionDialog)
+        assertEquals(StashBrowserAdjustMode.ChangeBy, dialog.mode)
+        assertEquals("", dialog.amount)
     }
 
     @Test
-    fun `when building move action without reason, it defaults to moving to selected stash`() {
-        val dialog =
-            StashBrowserActionDialog.Move(
-                item = browserItem(id = 1L),
-                targetStashId = StashDefinitionId(2L),
-                note = "Top shelf",
-            )
+    fun `when switching mode from ChangeBy to SetTo, amount resets to item current quantity`() {
+        val item = browserItem(id = 1L, quantity = StashMeasurement.grams(250.0))
+        val state = browserState()
+            .showManualAdjustDialog(item)
+            .updateManualAdjustMode(StashBrowserAdjustMode.ChangeBy)
 
-        val action = dialog.toManualAction(targetStashName = "Pantry")
+        val updated = state.updateManualAdjustMode(StashBrowserAdjustMode.SetTo)
 
-        assertEquals(ManualStashAction(reason = "Move to Pantry", note = "Top shelf"), action)
+        val dialog = assertIs<StashBrowserActionDialog.ManualAdjust>(updated.actionDialog)
+        assertEquals(StashBrowserAdjustMode.SetTo, dialog.mode)
+        assertEquals("250.0", dialog.amount)
     }
 
     private fun browserState(moveTargets: List<StashBrowserMoveTarget> = emptyList()) =

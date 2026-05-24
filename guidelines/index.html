@@ -318,5 +318,59 @@ exit 0</code></pre>
     exit 0</code></pre>
  </section>
 
+  <section class="step" data-step="50" data-kind="single">
+    <p class="step-summary">Default adjust mode changed to SetTo with mode-aware amount pre-fill.</p>
+
+    <div class="step-how">
+      <p>Changed StashBrowserAdjustMode default from ChangeBy to SetTo, swapped FilterChip order, added mode-aware amount reset in State and ViewModel.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Adjust dialog defaults to SetTo mode. Switching to ChangeBy clears the amount; switching to SetTo pre-fills current quantity.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ rg -n "SetTo" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserState.kt
+23:    SetTo,
+75:        val mode: StashBrowserAdjustMode = StashBrowserAdjustMode.SetTo,
+125:                        StashBrowserAdjustMode.SetTo -> item.quantity.measurement.rawValue.toString()</code></pre>
+  </section>
+
+  <section class="step" data-step="51" data-kind="single">
+    <p class="step-summary">ManualStashAction deleted, reason/note removed from all stash dialogs, move consolidated to MoveStashItemUseCase.</p>
+
+    <div class="step-how">
+      <p>Deleted ManualStashAction.kt. Removed reason/note fields from all three dialog data classes. Removed reason/note update methods from State and ViewModel. DomainStashBrowserActions simplified to three use-case delegation. Adjust/Remove set note=null; move delegates to MoveStashItemUseCase. Removed label_action_reason and label_action_note strings.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>Zero references to ManualStashAction in the entire codebase. Remove and Move dialogs show confirmation only (no text fields). Adjust dialog has mode selector + amount only. StashBrowserState and StashBrowserViewModel contain zero references to reason or note.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ rg "ManualStashAction" app/ --type kt
+(no matches)
+
+$ rg "reason|note" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserState.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserViewModel.kt app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserScreen.kt
+(no matches)
+
+$ rg "label_action_reason|label_action_note" shared/resources/
+(no matches)
+
+$ test -f app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/domain/usecase/ManualStashAction.kt; echo $?
+1
+
+$ rg -n "moveStashItemUseCase" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserActions.kt
+10:import com.maksimowiczm.foodyou.stash.domain.usecase.MoveStashItemUseCase
+34:    private val moveStashItemUseCase: MoveStashItemUseCase,
+51:        moveStashItemUseCase.move(itemId = itemId, targetStashId = targetStashId)</code></pre>
+
+    <ul class="artifacts">
+      <li><code>ManualStashAction.kt</code> — deleted</li>
+      <li><code>label_action_reason</code>, <code>label_action_note</code> — removed from strings</li>
+      <li><code>DomainStashBrowserActions</code> — now 3 use-case constructor, <code>move()</code> delegates</li>
+    </ul>
+  </section>
+
 </body>
 </html>

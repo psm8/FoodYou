@@ -32,7 +32,6 @@ class RemoveStashItemUseCase(
 ) {
     suspend fun remove(
         itemId: StashEntryId,
-        action: ManualStashAction,
     ): Result<StashEntry, RemoveStashItemError> {
         val ownerId = stashOwnerProvider.current()
         return transactionProvider.withTransaction {
@@ -64,7 +63,7 @@ class RemoveStashItemUseCase(
                         measurementChange = item.measurement.negate(),
                         linkedDiaryEntryId = null,
                         createdAt = dateProvider.now(),
-                        note = action.toMovementNote(),
+                        note = null,
                     )
                 )
             }

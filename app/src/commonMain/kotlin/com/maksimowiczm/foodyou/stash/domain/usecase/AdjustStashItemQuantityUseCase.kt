@@ -40,7 +40,6 @@ class AdjustStashItemQuantityUseCase(
     suspend fun adjust(
         itemId: StashEntryId,
         adjustment: StashMeasurementAdjustment,
-        action: ManualStashAction,
     ): Result<StashEntry, AdjustStashItemQuantityError> {
         val ownerId = stashOwnerProvider.current()
         return transactionProvider.withTransaction {
@@ -98,7 +97,7 @@ class AdjustStashItemQuantityUseCase(
                     measurementChange = normalizedTarget - item.measurement,
                     linkedDiaryEntryId = null,
                     createdAt = dateProvider.now(),
-                    note = action.toMovementNote(),
+                    note = null,
                 )
             )
             Ok(updatedItem)

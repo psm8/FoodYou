@@ -16,6 +16,9 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRecipe
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.usecase.StashMeasurementAdjustment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.CoroutineScope
@@ -51,20 +54,17 @@ class StashBrowserViewModelTest {
                     ),
                 browserActions = object : StashBrowserActions {
                     override suspend fun remove(
-                        itemId: com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId,
-                        action: com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction,
+                        itemId: StashEntryId,
                     ): Result<StashEntry, RemoveStashItemError> = Ok(sampleRawProductItem())
 
                     override suspend fun adjust(
-                        itemId: com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId,
-                        adjustment: com.maksimowiczm.foodyou.stash.domain.usecase.StashMeasurementAdjustment,
-                        action: com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction,
+                        itemId: StashEntryId,
+                        adjustment: StashMeasurementAdjustment,
                     ): Result<StashEntry, AdjustStashItemQuantityError> = Ok(sampleRawProductItem())
 
                     override suspend fun move(
-                        itemId: com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId,
-                        targetStashId: com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId,
-                        action: com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction,
+                        itemId: StashEntryId,
+                        targetStashId: StashDefinitionId,
                     ): Result<StashEntry, MoveStashItemError> = Ok(sampleRawProductItem())
                 },
                 coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),

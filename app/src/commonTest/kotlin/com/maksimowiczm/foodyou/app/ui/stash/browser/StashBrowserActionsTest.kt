@@ -4,7 +4,7 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.AdjustStashItemQuantityUseC
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeTransactionProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.FixedDateProvider
-import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
+import com.maksimowiczm.foodyou.stash.domain.usecase.MoveStashItemUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.NoOpLogger
 import com.maksimowiczm.foodyou.stash.domain.usecase.RemoveStashItemUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.localOwnerProvider
@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
 
 class StashBrowserActionsTest {
     @Test
-    fun `when moving an item, it records the manual action note for movement history`() =
+    fun `when moving an item, it delegates to MoveStashItemUseCase and records auto-generated notes`() =
         runBlocking {
             val sourceStash = sampleStash(id = 1L, name = "Freezer")
             val targetStash = sampleStash(id = 2L, name = "Pantry", ordering = 1)
@@ -31,12 +31,11 @@ class StashBrowserActionsTest {
             actions.move(
                 itemId = item.id,
                 targetStashId = targetStash.id,
-                action = ManualStashAction(reason = "Reorganized shelf", note = "Top rack"),
             )
 
             assertEquals(targetStash.id, repository.getItem(item.id)?.stashId)
             assertEquals(
-                listOf("Reorganized shelf\nTop rack", "Reorganized shelf\nTop rack"),
+                listOf("Moved to Pantry", "Moved from Freezer"),
                 repository.allMovements().map { it.note },
             )
         }
@@ -63,11 +62,14 @@ class StashBrowserActionsTest {
                     transactionProvider = transactionProvider,
                     logger = logger,
                 ),
-            stashRepository = repository,
-            stashOwnerProvider = ownerProvider,
-            dateProvider = dateProvider,
-            transactionProvider = transactionProvider,
-            logger = logger,
+            moveStashItemUseCase =
+                MoveStashItemUseCase(
+                    stashRepository = repository,
+                    stashOwnerProvider = ownerProvider,
+                    dateProvider = dateProvider,
+                    transactionProvider = transactionProvider,
+                    logger = logger,
+                ),
         )
     }
 }

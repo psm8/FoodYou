@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.app.ui.stash.observeStashFoodDisplay
 import com.maksimowiczm.foodyou.app.ui.stash.toStashMeasurementOrNull
 import com.maksimowiczm.foodyou.common.extension.combine
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
@@ -123,40 +124,24 @@ internal class StashBrowserViewModel(
         actionDialog.value = state.value.showMoveDialog(item).actionDialog
     }
 
-    fun updateRemoveReason(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.Remove)?.copy(reason = value) ?: it }
-    }
-
-    fun updateRemoveNote(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.Remove)?.copy(note = value) ?: it }
-    }
-
     fun updateManualAdjustAmount(value: String) {
         actionDialog.update { (it as? StashBrowserActionDialog.ManualAdjust)?.copy(amount = value) ?: it }
     }
 
-    fun updateManualAdjustReason(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.ManualAdjust)?.copy(reason = value) ?: it }
-    }
-
-    fun updateManualAdjustNote(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.ManualAdjust)?.copy(note = value) ?: it }
-    }
-
     fun updateManualAdjustMode(mode: StashBrowserAdjustMode) {
-        actionDialog.update { (it as? StashBrowserActionDialog.ManualAdjust)?.copy(mode = mode) ?: it }
+        actionDialog.update { dialog ->
+            val adjust = dialog as? StashBrowserActionDialog.ManualAdjust ?: return@update dialog
+            val resetAmount =
+                when (mode) {
+                    StashBrowserAdjustMode.SetTo -> adjust.item.quantity.measurement.rawValue.toString()
+                    StashBrowserAdjustMode.ChangeBy -> ""
+                }
+            adjust.copy(mode = mode, amount = resetAmount)
+        }
     }
 
     fun updateMoveTarget(targetStashId: StashDefinitionId?) {
         actionDialog.update { (it as? StashBrowserActionDialog.Move)?.copy(targetStashId = targetStashId) ?: it }
-    }
-
-    fun updateMoveReason(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.Move)?.copy(reason = value) ?: it }
-    }
-
-    fun updateMoveNote(value: String) {
-        actionDialog.update { (it as? StashBrowserActionDialog.Move)?.copy(note = value) ?: it }
     }
 
     fun dismissActionDialog() {
@@ -166,10 +151,7 @@ internal class StashBrowserViewModel(
     suspend fun confirmAction() {
         when (val dialog = actionDialog.value) {
             is StashBrowserActionDialog.Remove -> {
-                browserActions.remove(
-                    itemId = dialog.item.id,
-                    action = dialog.toManualAction(),
-                )
+                browserActions.remove(itemId = dialog.item.id)
                 dismissActionDialog()
             }
 
@@ -183,18 +165,15 @@ internal class StashBrowserViewModel(
                 browserActions.adjust(
                     itemId = dialog.item.id,
                     adjustment = adjustment,
-                    action = dialog.toManualAction(),
                 )
                 dismissActionDialog()
             }
 
             is StashBrowserActionDialog.Move -> {
                 val target = dialog.targetStashId ?: return
-                val targetName = state.value.moveTargets.firstOrNull { it.id == target }?.name
                 browserActions.move(
                     itemId = dialog.item.id,
                     targetStashId = target,
-                    action = dialog.toManualAction(targetStashName = targetName),
                 )
                 dismissActionDialog()
             }
