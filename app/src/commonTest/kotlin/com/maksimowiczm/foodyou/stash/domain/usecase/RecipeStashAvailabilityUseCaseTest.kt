@@ -179,4 +179,65 @@ class RecipeStashAvailabilityUseCaseTest {
         assertEquals(1, ingredient.allocations.size)
         assertEquals(1L, ingredient.allocations.single().item.id.value)
     }
+
+    @Test
+    fun when_direct_sub_recipe_is_only_partially_available_then_product_entries_are_not_used_as_fallback() = runBlocking {
+        val flour = sampleProduct(id = 1, name = "Flour", brand = null)
+        val dough =
+            Recipe(
+                id = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(9),
+                name = "Prepared dough",
+                servings = 2,
+                ingredients = listOf(RecipeIngredient(flour, Measurement.Gram(200.0))),
+                note = null,
+                isLiquid = false,
+            )
+        val parentRecipe =
+            Recipe(
+                id = com.maksimowiczm.foodyou.food.domain.entity.FoodId.Recipe(10),
+                name = "Pizza",
+                servings = 2,
+                ingredients = listOf(RecipeIngredient(dough, Measurement.Serving(1.0))),
+                note = null,
+                isLiquid = false,
+            )
+        val useCase =
+            AssessRecipeStashAvailabilityUseCase(
+                recipeRepository = FakeRecipeRepository(listOf(parentRecipe, dough)),
+                stashRepository =
+                    FakeStashRepository(
+                        initialStashes = listOf(sampleStash()),
+                        initialItems =
+                            listOf(
+                                sampleAnonymousDishItem(
+                                    id = 1,
+                                    measurement = StashMeasurement.servings(0.5),
+                                    recipe = dough,
+                                    totalAmount = Measurement.Serving(2.0),
+                                    servingsMade = 2,
+                                ),
+                                sampleRawProductItem(
+                                    id = 2,
+                                    measurement = StashMeasurement.grams(250.0),
+                                    product = flour,
+                                ),
+                            ),
+                    ),
+                stashOwnerProvider = localOwnerProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.assess(
+                recipeId = parentRecipe.id,
+                measurement = Measurement.Serving(2.0),
+            )
+
+        val success =
+            assertIs<Success<RecipeStashAvailability, AssessRecipeStashAvailabilityError>>(result)
+        val ingredient = success.data.ingredients.single()
+        assertEquals(IngredientAvailabilityStatus.PartiallyAvailable, ingredient.status)
+        assertEquals(StashMeasurement.servings(0.5), ingredient.availableMeasurement)
+        assertEquals(listOf(1L), ingredient.allocations.map { it.item.id.value })
+    }
 }
