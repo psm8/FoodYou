@@ -217,94 +217,104 @@ exit 0</code></pre>
   </section>
 
  <section class="step" data-step="11" data-kind="single">
-   <p class="step-summary">Captured the real add-to-stash flow with explicit stash selection and the live measurement options shown in the app.</p>
+   <p class="step-summary">Captured the shipped Settings -> Stashes screen with the live <code>Fridge</code> row and every stash action exposed from the real app.</p>
 
    <div class="step-how">
-     <p>Installed the current debug build on the Pixel 7a emulator, launched the debug evidence activity in the add-product scenario, and captured the app screen with <code>adb exec-out screencap -p</code>.</p>
+     <p>Launched the installed debug build on the Pixel 7a emulator, opened Settings from Home, navigated to Stashes, and captured the screen after the seeded stash row rendered.</p>
    </div>
 
    <div class="step-expect">
-     <p>The screen should show Greek yogurt, the serving/package measurement choices, and Pantry selected as the target stash.</p>
+     <p>The screen should show <code>Fridge</code>, <code>2 items</code>, and the real <code>Add</code>, <code>Quick add</code>, <code>Start shopping session</code>, <code>Rename stash</code>, and <code>Delete stash</code> actions.</p>
    </div>
 
    <figure>
-     <img src="assets/evidence/stash-add-product-explicit-stash.png" alt="Android app screen showing the add-to-stash flow with Greek yogurt, measurement options, and Pantry selected as the stash target">
-     <figcaption>App capture — add product to stash with explicit stash selection</figcaption>
+     <img src="assets/evidence/stash-management-real.png" alt="Android app Stashes screen showing the Fridge row with Add, Quick add, Start shopping session, Rename stash, and Delete stash actions">
+     <figcaption>Real app capture — live stash management row</figcaption>
    </figure>
 
    <h4>Scripts</h4>
-   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
-    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_add_product
-    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-add-product-explicit-stash.png
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-management-real.png
     exit 0</code></pre>
  </section>
 
  <section class="step" data-step="12" data-kind="single">
-   <p class="step-summary">Captured the stash browser with both a live product ref and a live recipe ref rendered together in the app.</p>
+   <p class="step-summary">Captured the shipped add-to-stash flow by opening <code>Fridge -> Add</code>, filtering to <code>Your food</code>, and drilling into <code>Skyr (FoodYou)</code> from the real search surface.</p>
 
    <div class="step-how">
-     <p>Launched the debug evidence activity in the stash-browser scenario and captured the rendered browser list directly from the emulator.</p>
+     <p>From the real stash-management row, tapped <code>Add</code>, switched the food search source to <code>Your food</code>, opened the seeded <code>Skyr (FoodYou)</code> result, and captured both the list and the add-detail screen.</p>
    </div>
 
    <div class="step-expect">
-     <p>The browser should show both <code>Pizza</code> and <code>Skyr (FoodYou)</code>, proving the live recipe/product names are resolved in the stash list.</p>
+     <p>The search surface should show <code>Your food (2)</code> with <code>Skyr (FoodYou)</code> available, and the detail screen should expose the live measurement choices that can be saved into the stash.</p>
    </div>
 
    <figure>
-     <img src="assets/evidence/stash-browser-live-refs.png" alt="Android app screen showing the stash browser with Pizza and Skyr (FoodYou) listed together">
-     <figcaption>App capture — stash browser with live product and recipe refs</figcaption>
+     <img src="assets/evidence/stash-add-search-real.png" alt="Android app add-to-stash search showing the Your food filter selected and Skyr (FoodYou) listed as a result">
+     <figcaption>Real app capture — add-to-stash search using the Your food source</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-add-detail-real.png" alt="Android app add-product-to-stash screen showing Skyr with serving, package, 100 gram, and ounce measurement options">
+     <figcaption>Real app capture — add product to stash with live measurement choices</figcaption>
    </figure>
 
    <h4>Scripts</h4>
-   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
-    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_browser_live_refs
-    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-browser-live-refs.png
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-add-search-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-add-detail-real.png
     exit 0</code></pre>
  </section>
 
  <section class="step" data-step="13" data-kind="single">
-   <p class="step-summary">Captured the real consume-from-stash flow for a product entry, including the remaining quantity, amount field, meal choice, and date selector.</p>
+   <p class="step-summary">Saved one serving of <code>Skyr (FoodYou)</code> into <code>Fridge</code>, verified the browser resolves live product and recipe names together, then consumed the newly added serving from the real consume screen.</p>
 
    <div class="step-how">
-     <p>Launched the debug evidence activity in the consume-product scenario and captured the screen after the form rendered on the emulator.</p>
+     <p>Saved the add-detail screen without changing the default one-serving amount, waited for the browser to load, opened the top <code>Skyr (FoodYou)</code> row via <code>Consume</code>, and then returned to the browser after the consume action completed.</p>
    </div>
 
    <div class="step-expect">
-     <p>The screen should show <code>Skyr (FoodYou)</code>, <code>450 g</code> remaining, a <code>150</code> amount entry, and the Breakfast meal chip selected.</p>
+     <p>The browser should first show the newly added <code>Skyr (FoodYou)</code> row together with the live <code>Pizza</code> recipe row, the consume screen should target the one-serving product entry, and the follow-up browser should show that one-serving row removed while the original <code>450 g</code> product entry remains.</p>
    </div>
 
    <figure>
-     <img src="assets/evidence/consume-stash-item-product.png" alt="Android app screen showing the consume-from-stash flow for Skyr with amount, meal, and date controls">
-     <figcaption>App capture — consume from stash for a product item</figcaption>
+     <img src="assets/evidence/stash-browser-after-add-real.png" alt="Android app stash browser showing the newly added Skyr row, the Pizza recipe row, and the original Skyr row together in Fridge">
+     <figcaption>Real app capture — browser after saving a new Skyr serving</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-consume-product-real.png" alt="Android app consume-from-stash screen for Skyr showing one serving remaining and the meal and date selectors">
+     <figcaption>Real app capture — consume the newly added Skyr serving</figcaption>
+   </figure>
+
+   <figure>
+     <img src="assets/evidence/stash-browser-after-consume-real.png" alt="Android app stash browser after consuming the one-serving Skyr row, leaving Pizza and the original 450 gram Skyr entry">
+     <figcaption>Real app capture — browser after consuming the added serving</figcaption>
    </figure>
 
    <h4>Scripts</h4>
-   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
-    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario consume_stash_product
-    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/consume-stash-item-product.png
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-browser-after-add-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-consume-product-real.png
+    $ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-browser-after-consume-real.png
     exit 0</code></pre>
  </section>
 
  <section class="step" data-step="14" data-kind="single">
-   <p class="step-summary">Captured the real remove-item flow for a recipe-backed stash entry, including the reason and note fields that the user fills before confirming removal.</p>
+   <p class="step-summary">Captured the real remove-item confirmation for the live <code>Pizza</code> recipe row directly from the stash browser.</p>
 
    <div class="step-how">
-     <p>Launched the debug evidence activity in the remove-recipe scenario and captured the browser dialog as rendered in the app.</p>
+     <p>From the real browser state after the consume action, tapped <code>Remove</code> on the visible <code>Pizza</code> row and captured the confirmation dialog with the reason and note fields rendered by the shipped UI.</p>
    </div>
 
    <div class="step-expect">
-     <p>The dialog should target the <code>Pizza</code> recipe entry and show the removal reason/note fields populated for a recipe cleanup action.</p>
+     <p>The dialog should target <code>Pizza</code> specifically and expose the manual removal reason/note fields for a recipe-backed stash item.</p>
    </div>
 
    <figure>
-     <img src="assets/evidence/stash-browser-remove-recipe.png" alt="Android app screen showing the stash browser remove dialog for a Pizza recipe entry">
-     <figcaption>App capture — remove recipe-backed stash item</figcaption>
+     <img src="assets/evidence/stash-remove-recipe-real.png" alt="Android app remove-item dialog asking to remove Pizza from the stash and showing reason and note fields">
+     <figcaption>Real app capture — remove confirmation for a recipe-backed stash row</figcaption>
    </figure>
 
    <h4>Scripts</h4>
-   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
-    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_remove_recipe
-    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-browser-remove-recipe.png
+   <pre class="script-run"><code>$ adb -s emulator-5554 exec-out screencap -p &gt; guidelines/assets/evidence/stash-remove-recipe-real.png
     exit 0</code></pre>
  </section>
 
