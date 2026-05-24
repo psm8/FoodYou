@@ -2,7 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.sum
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product as CatalogProduct
 import kotlin.jvm.JvmInline
@@ -18,6 +18,13 @@ data class ShoppingSessionProductDetails(
     val servingWeight: Double?,
     val nutritionFacts: NutritionFacts,
 ) {
+    fun metricAmount(measurement: Measurement): Double =
+        when (measurement) {
+            is Measurement.ImmutableMeasurement -> measurement.metric
+            is Measurement.Package -> measurement.weight(requireNotNull(totalWeight))
+            is Measurement.Serving -> measurement.weight(requireNotNull(servingWeight))
+        }
+
     companion object {
         fun from(product: CatalogProduct): ShoppingSessionProductDetails =
             ShoppingSessionProductDetails(
@@ -40,7 +47,7 @@ data class ShoppingSessionItem(
         get() = foodRef.productId
 
     val totalNutritionFacts: NutritionFacts =
-        productDetails.nutritionFacts * (measurement.measurement.rawValue / 100.0)
+        productDetails.nutritionFacts * (productDetails.metricAmount(measurement.measurement) / 100.0)
 }
 
 data class ShoppingSession(

@@ -112,7 +112,7 @@ class ManageStashItemsUseCaseTest {
         }
 
     @Test
-    fun `when removing item, it deletes the item and logs the full removal`() =
+    fun `when removing product-backed item, it preserves a zero row and logs the full removal`() =
         runBlocking {
             val item = sampleRawProductItem(measurement = StashMeasurement.grams(250.0))
             val repository =
@@ -137,7 +137,9 @@ class ManageStashItemsUseCaseTest {
 
             val removed = assertIs<Result.Success<*, *>>(result).data as com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
             assertEquals(0.0, removed.measurement.measurement.rawValue)
-            assertEquals(emptyList(), repository.allItems())
+            assertEquals(1, repository.allItems().size)
+            assertEquals(0.0, repository.allItems().single().measurement.measurement.rawValue)
+            assertEquals(item.foodRef, repository.allItems().single().foodRef)
             val movement = repository.allMovements().single()
             assertEquals(-250.0, movement.measurementChange.measurement.rawValue)
             assertEquals("Discarded\nExpired yesterday", movement.note)

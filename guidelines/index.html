@@ -216,5 +216,61 @@ exit 0</code></pre>
 exit 0</code></pre>
   </section>
 
+ <section class="step" data-step="11" data-kind="single">
+   <p class="step-summary">Verified the build and CI runtime now use Java 21 without adding any further <code>build.gradle.kts</code> changes.</p>
+
+   <div class="step-how">
+     <p>Ran Gradle locally with <code>JAVA_HOME</code> pointed at the installed Java 21 JBR and updated the release workflow to request JDK 21 in CI, then captured both signals in a single terminal screenshot.</p>
+   </div>
+
+   <div class="step-expect">
+     <p><code>java -version</code> and <code>.\gradlew -version</code> should report Java 21 locally, and the workflow should show <code>Set up JDK 21</code> with <code>java-version: '21'</code>.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/jvm-target-alignment.png" alt="Terminal screenshot showing Java 21 in the local Gradle runtime and Java 21 configured in the release workflow">
+     <figcaption>Terminal capture — Java 21 runtime alignment</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ $env:JAVA_HOME = 'C:\Users\admin\.jdks\jbr-21.0.11'
+$ java -version
+openjdk version "21.0.11"
+$ .\gradlew -version | Select-String 'Launcher JVM|Daemon JVM'
+Launcher JVM:  21.0.11
+Daemon JVM:    C:\Users\admin\.jdks\jbr-21.0.11
+$ Get-Content .github\workflows\release-apk.yml | Select-String 'Set up JDK 21|java-version: ''21'''
+14:      - name: Set up JDK 21
+17:          java-version: '21'
+$ git --no-pager diff --quiet -- app/build.gradle.kts shared/barcodescanner/build.gradle.kts
+No build.gradle.kts diff
+exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="12" data-kind="single">
+   <p class="step-summary">Verified the full Android unit-test suite passes on Java 21 after the stash follow-up fixes.</p>
+
+   <div class="step-how">
+     <p>Ran <code>.\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest</code> with <code>JAVA_HOME</code> pointed at the installed Java 21 JBR and captured the passing terminal output into the guidelines evidence assets.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The test task should complete successfully under Java 21 and report the full Android unit-test suite as green.</p>
+   </div>
+
+    <figure>
+      <img src="assets/evidence/app-testDebugUnitTest-pass.png" alt="Terminal screenshot showing the full :app:testDebugUnitTest Gradle task finishing successfully">
+      <figcaption>Terminal capture — full Android unit tests passing</figcaption>
+    </figure>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ $env:JAVA_HOME = 'C:\Users\admin\.jdks\jbr-21.0.11'
+$ .\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest
+190 tests completed
+    BUILD SUCCESSFUL in 5m 3s
+77 actionable tasks: 13 executed, 64 up-to-date
+exit 0</code></pre>
+  </section>
+
 </body>
 </html>

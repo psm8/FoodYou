@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
@@ -10,6 +11,7 @@ import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
@@ -44,7 +46,15 @@ class RemoveStashItemUseCase(
                 )
             }
 
-            stashRepository.deleteItem(item.id)
+            val removedItem =
+                item.copy(
+                    measurement = StashMeasurement(Measurement.from(item.measurement.type, 0.0))
+                )
+            if (removedItem.canDeleteWhenEmpty()) {
+                stashRepository.deleteItem(item.id)
+            } else {
+                stashRepository.updateItem(removedItem)
+            }
             if (item.measurement.measurement.rawValue > 0.0) {
                 stashRepository.insertMovement(
                     StashMovement.new(
@@ -58,9 +68,15 @@ class RemoveStashItemUseCase(
                     )
                 )
             }
-            Ok(item)
+            Ok(removedItem)
         }
     }
+
+    private fun StashEntry.canDeleteWhenEmpty(): Boolean =
+        when (foodRef) {
+            is StashFoodRef.Product -> false
+            is StashFoodRef.Recipe -> true
+        }
 
     private companion object {
         const val TAG = "RemoveStashItemUseCase"

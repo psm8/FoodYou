@@ -13,18 +13,21 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineScope
 
 internal class HomeStashCardViewModel(
     observeHomeStashSummaryUseCase: ObserveHomeStashSummaryUseCase,
     observeFoodUseCase: ObserveFoodUseCase,
+    coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
+    private val scope = coroutineScope ?: viewModelScope
     private val summaryLoaded = MutableStateFlow(false)
     private val summary =
         observeHomeStashSummaryUseCase
             .observe()
             .onEach { summaryLoaded.value = true }
             .stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = null,
             )
@@ -41,7 +44,7 @@ internal class HomeStashCardViewModel(
                     }
                 }
             }.stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = emptyList(),
             )
@@ -63,7 +66,7 @@ internal class HomeStashCardViewModel(
                 isLoading = !summaryLoaded || resolvedRecentItems.any(HomeStashCardItemUi::isLoading),
             )
         }.stateIn(
-            scope = viewModelScope,
+            scope = scope,
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue = HomeStashCardUiState(isLoading = true),
         )

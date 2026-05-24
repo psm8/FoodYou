@@ -99,10 +99,10 @@ class ShoppingSessionStateTest {
                             measurement = StashMeasurement(Measurement.Package(1.5)),
                         ),
                 )
-                .updateQuantity("750")
+                .updateQuantity("0.75")
 
         assertEquals(Measurement.Package(0.75), updated.measurement)
-        assertEquals(StashMeasurement(Measurement.Package(750.0)), updated.sessionItem.measurement)
+        assertEquals(StashMeasurement(Measurement.Package(0.75)), updated.sessionItem.measurement)
     }
 
     private fun selectedProduct(): ShoppingSessionSelectedProduct =

@@ -13,6 +13,9 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRecipe
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -43,10 +46,16 @@ class HomeStashCardViewModelTest {
                         productRepository = FakeProductRepository(listOf(sampleProduct(name = "Skyr", brand = "FoodYou"))),
                         recipeRepository = FakeRecipeRepository(listOf(sampleRecipe(name = "Pizza"))),
                     ),
+                coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
 
         val stateJob = launch { viewModel.state.collect { } }
-        yield()
+        repeat(20) {
+            if (!viewModel.state.value.isLoading && viewModel.state.value.recentItems.isNotEmpty()) {
+                return@repeat
+            }
+            yield()
+        }
 
         assertEquals(listOf("Pizza", "Skyr (FoodYou)"), viewModel.state.value.recentItems.map { it.name })
         assertEquals(false, viewModel.state.value.isLoading)

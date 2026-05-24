@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CoroutineScope
 
 internal class StashBrowserViewModel(
     private val stashId: StashDefinitionId,
@@ -30,7 +31,9 @@ internal class StashBrowserViewModel(
     private val stashOwnerProvider: StashOwnerProvider,
     private val observeFoodUseCase: ObserveFoodUseCase,
     private val browserActions: StashBrowserActions,
+    coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
+    private val scope = coroutineScope ?: viewModelScope
     private val ownerId = stashOwnerProvider.current()
     private val query = MutableStateFlow("")
     private val sortOption = MutableStateFlow(StashBrowserSortOption.DateAddedDescending)
@@ -50,7 +53,7 @@ internal class StashBrowserViewModel(
                         .toList()
                 currentStashName to moveTargets
             }.stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = "" to emptyList(),
             )
@@ -60,7 +63,7 @@ internal class StashBrowserViewModel(
             .observeStashContents(stashId)
             .onEach { isLoading.value = false }
             .stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = emptyList(),
             )
@@ -69,7 +72,7 @@ internal class StashBrowserViewModel(
         stashEntries
             .flatMapLatest(::observeItemDisplays)
             .stateIn(
-                scope = viewModelScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = emptyList(),
             )
@@ -102,7 +105,7 @@ internal class StashBrowserViewModel(
                 sortOption = sortOption,
             )
         }.stateIn(
-            scope = viewModelScope,
+            scope = scope,
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue = StashBrowserState(stashId = stashId),
         )

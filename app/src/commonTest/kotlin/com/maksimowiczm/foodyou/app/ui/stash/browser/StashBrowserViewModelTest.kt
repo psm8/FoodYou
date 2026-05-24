@@ -18,6 +18,9 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.sampleStash
 import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -64,10 +67,16 @@ class StashBrowserViewModelTest {
                         action: com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction,
                     ): Result<StashEntry, MoveStashItemError> = Ok(sampleRawProductItem())
                 },
+                coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
 
         val stateJob = launch { viewModel.state.collect { } }
-        yield()
+        repeat(20) {
+            if (!viewModel.state.value.isLoading && viewModel.state.value.items.isNotEmpty()) {
+                return@repeat
+            }
+            yield()
+        }
 
         assertEquals(listOf("Pizza", "Skyr (FoodYou)"), viewModel.state.value.items.map { it.name })
         assertEquals(false, viewModel.state.value.isLoading)
