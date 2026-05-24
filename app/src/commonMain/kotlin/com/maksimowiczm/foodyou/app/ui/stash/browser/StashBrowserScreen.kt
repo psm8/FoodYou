@@ -79,7 +79,7 @@ fun StashBrowserScreen(
 }
 
 @Composable
-private fun StashBrowserScreen(
+internal fun StashBrowserScreen(
     state: StashBrowserState,
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,

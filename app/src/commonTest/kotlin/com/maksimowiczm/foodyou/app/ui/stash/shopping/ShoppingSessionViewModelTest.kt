@@ -156,7 +156,8 @@ class ShoppingSessionViewModelTest {
             viewModel.confirm()
             awaitState(viewModel) { !it.isConfirming && it.items.isEmpty() }
 
-            assertIs<ShoppingSessionEvent.Finished>(event.await())
+            val finished = assertIs<ShoppingSessionEvent.Finished>(event.await())
+            assertEquals(StashDefinitionId(9L), finished.stashId)
             assertEquals(StashMeasurement.grams(300.0), stashRepository.allItems().single().measurement)
         }
 
@@ -186,7 +187,8 @@ class ShoppingSessionViewModelTest {
             viewModel.confirm()
             awaitState(viewModel) { !it.isConfirming && it.items.isEmpty() }
 
-            assertIs<ShoppingSessionEvent.Finished>(event.await())
+            val finished = assertIs<ShoppingSessionEvent.Finished>(event.await())
+            assertEquals(StashDefinitionId(9L), finished.stashId)
             assertEquals(StashMeasurement.packages(0.75), stashRepository.allItems().single().measurement)
         }
 

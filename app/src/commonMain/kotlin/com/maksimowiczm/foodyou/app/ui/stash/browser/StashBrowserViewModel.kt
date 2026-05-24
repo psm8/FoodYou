@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.stash.StashFoodDisplay
 import com.maksimowiczm.foodyou.app.ui.stash.observeStashFoodDisplay
 import com.maksimowiczm.foodyou.app.ui.stash.toStashMeasurementOrNull
+import com.maksimowiczm.foodyou.common.extension.combine
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
@@ -16,7 +17,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -77,14 +77,7 @@ internal class StashBrowserViewModel(
                 initialValue = emptyList(),
             )
     val state: StateFlow<StashBrowserState> =
-        combine(stashEntries, itemDisplays, stashDetails, query, sortOption, actionDialog, isLoading) { values: Array<Any?> ->
-            val items = values[0] as List<StashEntry>
-            val itemDisplays = values[1] as List<StashFoodDisplay>
-            val stashDetails = values[2] as Pair<String, List<StashBrowserMoveTarget>>
-            val query = values[3] as String
-            val sortOption = values[4] as StashBrowserSortOption
-            val dialog = values[5] as StashBrowserActionDialog?
-            val isLoading = values[6] as Boolean
+        combine(stashEntries, itemDisplays, stashDetails, query, sortOption, actionDialog, isLoading) { items, itemDisplays, stashDetails, query, sortOption, dialog, isLoading ->
             val stashName = stashDetails.first
             val moveTargets = stashDetails.second
             StashBrowserState(
@@ -221,8 +214,6 @@ internal class StashBrowserViewModel(
             return flowOf(emptyList())
         }
 
-        return combine(items.map { observeFoodUseCase.observeStashFoodDisplay(it.foodRef) }) { displays ->
-            displays.toList()
-        }
+        return items.map { observeFoodUseCase.observeStashFoodDisplay(it.foodRef) }.combine()
     }
 }

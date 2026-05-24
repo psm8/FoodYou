@@ -68,7 +68,7 @@ fun ConsumeStashItemScreen(
 }
 
 @Composable
-private fun ConsumeStashItemScreen(
+internal fun ConsumeStashItemScreen(
     state: ConsumeStashItemState,
     onBack: () -> Unit,
     onAmountChange: (String) -> Unit,

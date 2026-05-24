@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.stash.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.common.extension.combine
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
@@ -19,7 +20,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -57,33 +57,39 @@ internal class ShoppingSessionViewModel(
 
     val events = eventBus.receiveAsFlow()
 
-    val state =
-        combine(
-            stashOptions,
-            isLoading,
-            isConfirming,
-            selectedStashId,
-            selectedProduct,
-            pendingMeasurement,
-            items,
-            error,
-        ) { values: Array<Any?> ->
-            val stashOptions = values[0] as List<ShoppingSessionStashOption>
-            val isLoading = values[1] as Boolean
-            val isConfirming = values[2] as Boolean
-            val selectedStashId = values[3] as StashDefinitionId?
-            val selectedProduct = values[4] as ShoppingSessionSelectedProduct?
-            val pendingMeasurement = values[5] as Measurement?
-            val items = values[6] as List<ShoppingSessionListItem>
-            val error = values[7] as ShoppingSessionUiError?
-
-            ShoppingSessionUiState(
+    private val stateInputs =
+        combine(stashOptions, isLoading, isConfirming, selectedStashId, selectedProduct, pendingMeasurement) { stashOptions, isLoading, isConfirming, selectedStashId, selectedProduct, pendingMeasurement ->
+            ShoppingSessionStateInputs(
+                stashOptions = stashOptions,
                 isLoading = isLoading,
                 isConfirming = isConfirming,
-                stashOptions = stashOptions,
-                selectedStashId = resolveSelectedStash(stashOptions, selectedStashId),
+                selectedStashId = selectedStashId,
                 selectedProduct = selectedProduct,
                 pendingMeasurement = pendingMeasurement,
+            )
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue =
+                ShoppingSessionStateInputs(
+                    stashOptions = emptyList(),
+                    isLoading = true,
+                    isConfirming = false,
+                    selectedStashId = stashId,
+                    selectedProduct = null,
+                    pendingMeasurement = null,
+                ),
+        )
+
+    val state =
+        kotlinx.coroutines.flow.combine(stateInputs, items, error) { inputs, items, error ->
+            ShoppingSessionUiState(
+                isLoading = inputs.isLoading,
+                isConfirming = inputs.isConfirming,
+                stashOptions = inputs.stashOptions,
+                selectedStashId = resolveSelectedStash(inputs.stashOptions, inputs.selectedStashId),
+                selectedProduct = inputs.selectedProduct,
+                pendingMeasurement = inputs.pendingMeasurement,
                 items = items,
                 error = error,
             )
@@ -328,3 +334,12 @@ internal class ShoppingSessionViewModel(
         val stashId: StashDefinitionId,
     )
 }
+
+private data class ShoppingSessionStateInputs(
+    val stashOptions: List<ShoppingSessionStashOption>,
+    val isLoading: Boolean,
+    val isConfirming: Boolean,
+    val selectedStashId: StashDefinitionId?,
+    val selectedProduct: ShoppingSessionSelectedProduct?,
+    val pendingMeasurement: Measurement?,
+)

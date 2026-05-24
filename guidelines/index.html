@@ -217,60 +217,96 @@ exit 0</code></pre>
   </section>
 
  <section class="step" data-step="11" data-kind="single">
-   <p class="step-summary">Verified the build and CI runtime now use Java 21 without adding any further <code>build.gradle.kts</code> changes.</p>
+   <p class="step-summary">Captured the real add-to-stash flow with explicit stash selection and the live measurement options shown in the app.</p>
 
    <div class="step-how">
-     <p>Ran Gradle locally with <code>JAVA_HOME</code> pointed at the installed Java 21 JBR and updated the release workflow to request JDK 21 in CI, then captured both signals in a single terminal screenshot.</p>
+     <p>Installed the current debug build on the Pixel 7a emulator, launched the debug evidence activity in the add-product scenario, and captured the app screen with <code>adb exec-out screencap -p</code>.</p>
    </div>
 
    <div class="step-expect">
-     <p><code>java -version</code> and <code>.\gradlew -version</code> should report Java 21 locally, and the workflow should show <code>Set up JDK 21</code> with <code>java-version: '21'</code>.</p>
+     <p>The screen should show Greek yogurt, the serving/package measurement choices, and Pantry selected as the target stash.</p>
    </div>
 
    <figure>
-     <img src="assets/evidence/jvm-target-alignment.png" alt="Terminal screenshot showing Java 21 in the local Gradle runtime and Java 21 configured in the release workflow">
-     <figcaption>Terminal capture — Java 21 runtime alignment</figcaption>
+     <img src="assets/evidence/stash-add-product-explicit-stash.png" alt="Android app screen showing the add-to-stash flow with Greek yogurt, measurement options, and Pantry selected as the stash target">
+     <figcaption>App capture — add product to stash with explicit stash selection</figcaption>
    </figure>
 
    <h4>Scripts</h4>
-   <pre class="script-run"><code>$ $env:JAVA_HOME = 'C:\Users\admin\.jdks\jbr-21.0.11'
-$ java -version
-openjdk version "21.0.11"
-$ .\gradlew -version | Select-String 'Launcher JVM|Daemon JVM'
-Launcher JVM:  21.0.11
-Daemon JVM:    C:\Users\admin\.jdks\jbr-21.0.11
-$ Get-Content .github\workflows\release-apk.yml | Select-String 'Set up JDK 21|java-version: ''21'''
-14:      - name: Set up JDK 21
-17:          java-version: '21'
-$ git --no-pager diff --quiet -- app/build.gradle.kts shared/barcodescanner/build.gradle.kts
-No build.gradle.kts diff
-exit 0</code></pre>
+   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
+    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_add_product
+    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-add-product-explicit-stash.png
+    exit 0</code></pre>
  </section>
 
  <section class="step" data-step="12" data-kind="single">
-   <p class="step-summary">Verified the full Android unit-test suite passes on Java 21 after the stash follow-up fixes.</p>
+   <p class="step-summary">Captured the stash browser with both a live product ref and a live recipe ref rendered together in the app.</p>
 
    <div class="step-how">
-     <p>Ran <code>.\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest</code> with <code>JAVA_HOME</code> pointed at the installed Java 21 JBR and captured the passing terminal output into the guidelines evidence assets.</p>
+     <p>Launched the debug evidence activity in the stash-browser scenario and captured the rendered browser list directly from the emulator.</p>
    </div>
 
    <div class="step-expect">
-     <p>The test task should complete successfully under Java 21 and report the full Android unit-test suite as green.</p>
+     <p>The browser should show both <code>Pizza</code> and <code>Skyr (FoodYou)</code>, proving the live recipe/product names are resolved in the stash list.</p>
    </div>
 
-    <figure>
-      <img src="assets/evidence/app-testDebugUnitTest-pass.png" alt="Terminal screenshot showing the full :app:testDebugUnitTest Gradle task finishing successfully">
-      <figcaption>Terminal capture — full Android unit tests passing</figcaption>
-    </figure>
+   <figure>
+     <img src="assets/evidence/stash-browser-live-refs.png" alt="Android app screen showing the stash browser with Pizza and Skyr (FoodYou) listed together">
+     <figcaption>App capture — stash browser with live product and recipe refs</figcaption>
+   </figure>
 
-    <h4>Scripts</h4>
-    <pre class="script-run"><code>$ $env:JAVA_HOME = 'C:\Users\admin\.jdks\jbr-21.0.11'
-$ .\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest
-190 tests completed
-    BUILD SUCCESSFUL in 5m 3s
-77 actionable tasks: 13 executed, 64 up-to-date
-exit 0</code></pre>
-  </section>
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
+    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_browser_live_refs
+    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-browser-live-refs.png
+    exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="13" data-kind="single">
+   <p class="step-summary">Captured the real consume-from-stash flow for a product entry, including the remaining quantity, amount field, meal choice, and date selector.</p>
+
+   <div class="step-how">
+     <p>Launched the debug evidence activity in the consume-product scenario and captured the screen after the form rendered on the emulator.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The screen should show <code>Skyr (FoodYou)</code>, <code>450 g</code> remaining, a <code>150</code> amount entry, and the Breakfast meal chip selected.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/consume-stash-item-product.png" alt="Android app screen showing the consume-from-stash flow for Skyr with amount, meal, and date controls">
+     <figcaption>App capture — consume from stash for a product item</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
+    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario consume_stash_product
+    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/consume-stash-item-product.png
+    exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="14" data-kind="single">
+   <p class="step-summary">Captured the real remove-item flow for a recipe-backed stash entry, including the reason and note fields that the user fills before confirming removal.</p>
+
+   <div class="step-how">
+     <p>Launched the debug evidence activity in the remove-recipe scenario and captured the browser dialog as rendered in the app.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The dialog should target the <code>Pizza</code> recipe entry and show the removal reason/note fields populated for a recipe cleanup action.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-browser-remove-recipe.png" alt="Android app screen showing the stash browser remove dialog for a Pizza recipe entry">
+     <figcaption>App capture — remove recipe-backed stash item</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ adb -e shell am force-stop com.maksimowiczm.foodyou
+    $ adb -e shell am start -W -n com.maksimowiczm.foodyou/com.maksimowiczm.foodyou.app.infrastructure.android.DebugEvidenceActivity --es scenario stash_remove_recipe
+    $ adb -e exec-out screencap -p | python -c "import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())" guidelines/assets/evidence/stash-browser-remove-recipe.png
+    exit 0</code></pre>
+ </section>
 
 </body>
 </html>

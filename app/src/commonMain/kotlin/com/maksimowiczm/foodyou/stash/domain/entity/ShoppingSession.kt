@@ -92,16 +92,4 @@ data class ShoppingSession(
                 }
         )
     }
-
-    fun updateQuantity(itemId: ShoppingSessionItemId, measurement: StashMeasurement): ShoppingSession =
-        copy(
-            items =
-                items.map { item ->
-                    if (item.id == itemId) {
-                        item.copy(measurement = measurement)
-                    } else {
-                        item
-                    }
-                }
-        )
 }

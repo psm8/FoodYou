@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.stash.StashFoodDisplay
 import com.maksimowiczm.foodyou.app.ui.stash.observeStashFoodDisplay
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.common.extension.combine
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.result.onError
@@ -23,7 +24,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -82,38 +82,41 @@ internal class ConsumeStashItemViewModel(
                 initialValue = initialDate,
             )
 
-    val state: StateFlow<ConsumeStashItemState> =
-        combine(
-            item,
-            itemLoaded,
-            amount,
-            itemDisplay,
-            meals,
-            selectedMealId,
-            selectedDate,
-            today,
-            isSaving,
-            error,
-        ) { values: Array<Any?> ->
-            val item = values[0] as StashEntry?
-            val itemLoaded = values[1] as Boolean
-            val amount = values[2] as String
-            val itemDisplay = values[3] as StashFoodDisplay?
-            val meals = values[4] as List<Meal>
-            val selectedMealId = values[5] as Long?
-            val selectedDate = values[6] as LocalDate?
-            val today = values[7] as LocalDate
-            val isSaving = values[8] as Boolean
-            val error = values[9] as ConsumeStashItemError?
-            ConsumeStashItemState(
-                itemName = itemDisplay?.name.orEmpty(),
-                remainingQuantity = item?.measurement,
+    private val stateInputs =
+        combine(item, itemLoaded, amount, itemDisplay, meals, selectedMealId) { item, itemLoaded, amount, itemDisplay, meals, selectedMealId ->
+            ConsumeStashItemStateInputs(
+                item = item,
+                itemLoaded = itemLoaded,
                 amount = amount,
-                meals = meals.map { ConsumeStashItemMeal(id = it.id, name = it.name) },
+                itemDisplay = itemDisplay,
+                meals = meals,
                 selectedMealId = selectedMealId,
+            )
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue =
+                ConsumeStashItemStateInputs(
+                    item = null,
+                    itemLoaded = false,
+                    amount = "",
+                    itemDisplay = null,
+                    meals = emptyList(),
+                    selectedMealId = null,
+                ),
+        )
+
+    val state: StateFlow<ConsumeStashItemState> =
+        kotlinx.coroutines.flow.combine(stateInputs, selectedDate, today, isSaving, error) { inputs, selectedDate, today, isSaving, error ->
+            ConsumeStashItemState(
+                itemName = inputs.itemDisplay?.name.orEmpty(),
+                remainingQuantity = inputs.item?.measurement,
+                amount = inputs.amount,
+                meals = inputs.meals.map { ConsumeStashItemMeal(id = it.id, name = it.name) },
+                selectedMealId = inputs.selectedMealId,
                 today = today,
                 selectedDate = selectedDate ?: today,
-                isLoading = !itemLoaded || (item != null && (itemDisplay == null || itemDisplay.isLoading)),
+                isLoading = !inputs.itemLoaded || (inputs.item != null && (inputs.itemDisplay == null || inputs.itemDisplay.isLoading)),
                 isSaving = isSaving,
                 error = error,
             )
@@ -243,3 +246,12 @@ internal class ConsumeStashItemViewModel(
 internal sealed interface ConsumeStashItemEvent {
     data object Consumed : ConsumeStashItemEvent
 }
+
+private data class ConsumeStashItemStateInputs(
+    val item: StashEntry?,
+    val itemLoaded: Boolean,
+    val amount: String,
+    val itemDisplay: StashFoodDisplay?,
+    val meals: List<Meal>,
+    val selectedMealId: Long?,
+)
