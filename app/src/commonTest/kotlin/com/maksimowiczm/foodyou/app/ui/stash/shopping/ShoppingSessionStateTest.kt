@@ -2,10 +2,11 @@ package com.maksimowiczm.foodyou.app.ui.stash.shopping
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItem
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionProductDetails
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.nutritionWithEnergy
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleProduct
@@ -90,9 +91,11 @@ class ShoppingSessionStateTest {
                     sessionItem =
                         ShoppingSessionItem(
                             id = ShoppingSessionItemId("session-item-1"),
-                            productId = sampleProduct().id,
-                            snapshot =
-                                RawProductSnapshot.from(sampleProduct(packageWeight = 1000.0)),
+                            foodRef = StashFoodRef.Product(sampleProduct().id),
+                            productDetails =
+                                ShoppingSessionProductDetails.from(
+                                    sampleProduct(packageWeight = 1000.0),
+                                ),
                             measurement = StashMeasurement(Measurement.Package(1.5)),
                         ),
                 )
@@ -121,10 +124,10 @@ class ShoppingSessionStateTest {
             sessionItem =
                 ShoppingSessionItem(
                     id = ShoppingSessionItemId("session-item-$id"),
-                    productId = sampleProduct().id,
-                    snapshot =
-                        RawProductSnapshot.from(
-                            sampleProduct(nutritionFacts = nutritionWithEnergy(energy))
+                    foodRef = StashFoodRef.Product(sampleProduct().id),
+                    productDetails =
+                        ShoppingSessionProductDetails.from(
+                            sampleProduct(nutritionFacts = nutritionWithEnergy(energy)),
                         ),
                     measurement = StashMeasurement(Measurement.Gram(measurementRawValue)),
                 ),

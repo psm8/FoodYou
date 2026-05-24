@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeTransactionProvider
+import com.maksimowiczm.foodyou.stash.domain.usecase.FakeProductRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FixedDateProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.NoOpLogger
 import com.maksimowiczm.foodyou.stash.domain.usecase.RestoreLinkedDiaryEntryStashUseCase
@@ -66,6 +67,7 @@ class DeleteFoodDiaryEntryUseCaseTest {
                 restoreLinkedDiaryEntryStashUseCase =
                     RestoreLinkedDiaryEntryStashUseCase(
                         stashRepository = stashRepository,
+                        productRepository = FakeProductRepository(listOf(product)),
                         dateProvider = FixedDateProvider(),
                         logger = NoOpLogger,
                     ),

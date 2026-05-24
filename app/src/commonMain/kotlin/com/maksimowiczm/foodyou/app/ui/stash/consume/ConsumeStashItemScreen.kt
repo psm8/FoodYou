@@ -29,7 +29,7 @@ import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
@@ -40,7 +40,7 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 fun ConsumeStashItemScreen(
-    itemId: StashItemId,
+    itemId: StashEntryId,
     onBack: () -> Unit,
     onConsumed: () -> Unit,
     modifier: Modifier = Modifier,

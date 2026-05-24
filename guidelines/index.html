@@ -17,7 +17,7 @@
 <body>
 
   <h1>Food Stash Feature — Evidence Page</h1>
-  <p>Canonical evidence for the food stash implementation on branch <code>fix/food-stash-fixes</code>.</p>
+  <p>Canonical evidence for the food stash implementation on branch <code>feat/issue-40-47-stash-foodref-rollup</code>.</p>
 
   <section class="step" data-step="1" data-kind="single">
     <p class="step-summary">Verified the Home screen shows the Kitchen stash card with Add and Quick Add entry points.</p>
@@ -160,6 +160,33 @@ exit 0</code></pre>
     <pre class="script-run"><code>$ git grep -l "toMeasurement" -- '*.kt'
 shared/barcodescanner/src/main/kotlin/.../domain/StashQuantity.kt
 exit 0</code></pre>
+  </section>
+
+  <section class="step" data-step="9" data-kind="single">
+    <p class="step-summary">Validated the stash live-reference bundle compiles on the Android unit-test classpath and captured the remaining runtime blocker for targeted unit tests.</p>
+
+    <div class="step-how">
+      <p>Ran the focused Android unit-test compile and the targeted stash test invocation on branch <code>feat/issue-40-47-stash-foodref-rollup</code>.</p>
+    </div>
+
+    <div class="step-expect">
+      <p>The compile should succeed for the refactor bundle, and the test run should fail only with the known environment-wide <code>UnsupportedClassVersionError</code>.</p>
+    </div>
+
+    <h4>Scripts</h4>
+    <pre class="script-run"><code>$ .\gradlew --no-daemon --no-build-cache :app:compileDebugUnitTestKotlinAndroid -x :shared:barcodescanner:compileDebugJavaWithJavac
+BUILD SUCCESSFUL in 2m 33s
+66 actionable tasks: 7 executed, 59 up-to-date
+exit 0</code></pre>
+
+    <pre class="script-run"><code>$ .\gradlew --no-daemon --no-build-cache :app:testDebugUnitTest -x :shared:barcodescanner:compileDebugJavaWithJavac --tests "*CreateManualStashSnapshotUseCaseTest" --tests "*HomeStashQuickAddViewModelTest" --tests "*ShoppingSessionUseCaseTest" --tests "*ShoppingSessionStateTest" --tests "*ShoppingSessionViewModelTest" --tests "*RecipeStashAvailabilityUseCaseTest"
+ShoppingSessionStateTest &gt; initializationError FAILED
+CreateManualStashSnapshotUseCaseTest &gt; initializationError FAILED
+RecipeStashAvailabilityUseCaseTest &gt; initializationError FAILED
+ShoppingSessionUseCaseTest &gt; initializationError FAILED
+java.lang.UnsupportedClassVersionError
+BUILD FAILED in 44s
+exit 1</code></pre>
   </section>
 
 </body>

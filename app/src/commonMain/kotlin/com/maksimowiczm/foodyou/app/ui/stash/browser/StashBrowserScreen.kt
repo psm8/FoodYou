@@ -36,7 +36,7 @@ import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
@@ -48,7 +48,7 @@ import org.koin.core.parameter.parametersOf
 fun StashBrowserScreen(
     stashId: StashDefinitionId,
     onBack: () -> Unit,
-    onConsumeItem: (StashItemId) -> Unit,
+    onConsumeItem: (StashEntryId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StashBrowserViewModel = koinViewModel(parameters = { parametersOf(stashId) })
@@ -84,7 +84,7 @@ private fun StashBrowserScreen(
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
     onSortChange: (StashBrowserSortOption) -> Unit,
-    onConsumeItem: (StashItemId) -> Unit,
+    onConsumeItem: (StashEntryId) -> Unit,
     onRemoveItem: (StashBrowserItem) -> Unit,
     onManualAdjustItem: (StashBrowserItem) -> Unit,
     onMoveItem: (StashBrowserItem) -> Unit,
@@ -239,7 +239,7 @@ private fun StashBrowserScreen(
 private fun StashBrowserItemCard(
     item: StashBrowserItem,
     dateLabel: String,
-    onConsumeItem: (StashItemId) -> Unit,
+    onConsumeItem: (StashEntryId) -> Unit,
     onRemoveItem: (StashBrowserItem) -> Unit,
     onManualAdjustItem: (StashBrowserItem) -> Unit,
     onMoveItem: (StashBrowserItem) -> Unit,

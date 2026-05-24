@@ -409,9 +409,9 @@ private fun PreviewCard(
                             Text(
                                 text =
                                     item.measurement.stringResourceWithWeight(
-                                        totalWeight = item.sessionItem.snapshot.totalWeight,
-                                        servingWeight = item.sessionItem.snapshot.servingWeight,
-                                        isLiquid = item.sessionItem.snapshot.isLiquid,
+                                        totalWeight = item.sessionItem.productDetails.totalWeight,
+                                        servingWeight = item.sessionItem.productDetails.servingWeight,
+                                        isLiquid = item.sessionItem.productDetails.isLiquid,
                                     ) ?: item.measurement.stringResource(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -458,6 +458,5 @@ private fun MeasurementType.label(): String =
         MeasurementType.Ounce -> stringResource(Res.string.unit_gram_short)
         MeasurementType.FluidOunce -> stringResource(Res.string.unit_milliliter_short)
     }
-
 
 

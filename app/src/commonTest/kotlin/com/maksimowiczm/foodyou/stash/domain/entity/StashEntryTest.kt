@@ -1,7 +1,5 @@
 package com.maksimowiczm.foodyou.stash.domain.entity
 
-import com.maksimowiczm.foodyou.common.domain.food.FoodSource
-import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -10,17 +8,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlinx.datetime.LocalDateTime
 
-class StashItemTest {
+class StashEntryTest {
     @Test
     fun `when quantity increases, returns signed adjustment in the same unit`() {
         val previous =
-            stashItem(
+            stashEntry(
                 measurement = StashMeasurement.grams(150.0),
             )
         val updated =
             previous.copy(
                 measurement = StashMeasurement.grams(225.0),
-                snapshot = previous.snapshot,
+                foodRef = previous.foodRef,
             )
 
         val change = updated.quantityChangeFrom(previous)
@@ -38,25 +36,13 @@ class StashItemTest {
     }
 }
 
-private fun stashItem(
+private fun stashEntry(
     measurement: StashMeasurement,
-): StashItem =
-    StashItem(
-        id = StashItemId(1),
+): StashEntry =
+    StashEntry(
+        id = StashEntryId(1),
         stashId = StashDefinitionId(7),
-        snapshot =
-            RawProductSnapshot(
-                productId = FoodId.Product(11),
-                name = "Whole milk",
-                brand = "Foodyou",
-                barcode = "1234567890",
-                note = "Fresh",
-                isLiquid = true,
-                packageWeight = 1000.0,
-                servingWeight = 250.0,
-                source = FoodSource(FoodSource.Type.User),
-                nutritionFacts = NutritionFacts.Empty,
-            ),
+        foodRef = StashFoodRef.Product(FoodId.Product(11)),
         measurement = measurement,
         createdAt = LocalDateTime(2025, 1, 1, 0, 0),
     )

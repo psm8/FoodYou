@@ -7,8 +7,8 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
@@ -24,21 +24,21 @@ import kotlinx.coroutines.flow.first
 
 internal interface StashBrowserActions {
     suspend fun remove(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         action: ManualStashAction,
-    ): Result<StashItem, RemoveStashItemError>
+    ): Result<StashEntry, RemoveStashItemError>
 
     suspend fun adjust(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
-    ): Result<StashItem, AdjustStashItemQuantityError>
+    ): Result<StashEntry, AdjustStashItemQuantityError>
 
     suspend fun move(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         targetStashId: StashDefinitionId,
         action: ManualStashAction,
-    ): Result<StashItem, MoveStashItemError>
+    ): Result<StashEntry, MoveStashItemError>
 }
 
 internal class DomainStashBrowserActions(
@@ -51,23 +51,23 @@ internal class DomainStashBrowserActions(
     private val logger: Logger,
 ) : StashBrowserActions {
     override suspend fun remove(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         action: ManualStashAction,
-    ): Result<StashItem, RemoveStashItemError> =
+    ): Result<StashEntry, RemoveStashItemError> =
         removeStashItemUseCase.remove(itemId = itemId, action = action)
 
     override suspend fun adjust(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         adjustment: StashMeasurementAdjustment,
         action: ManualStashAction,
-    ): Result<StashItem, AdjustStashItemQuantityError> =
+    ): Result<StashEntry, AdjustStashItemQuantityError> =
         adjustStashItemQuantityUseCase.adjust(itemId = itemId, adjustment = adjustment, action = action)
 
     override suspend fun move(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         targetStashId: StashDefinitionId,
         action: ManualStashAction,
-    ): Result<StashItem, MoveStashItemError> {
+    ): Result<StashEntry, MoveStashItemError> {
         val ownerId = stashOwnerProvider.current()
         return transactionProvider.withTransaction {
             val stashes = stashRepository.observeStashes(ownerId).first()

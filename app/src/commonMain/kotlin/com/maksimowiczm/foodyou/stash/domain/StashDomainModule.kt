@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.stash.domain
 
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddProductToStashUseCase
+import com.maksimowiczm.foodyou.stash.domain.usecase.AddRecipeToStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.AddToShoppingSessionUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.AdjustStashItemQuantityUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.AssessRecipeStashAvailabilityUseCase
@@ -32,6 +33,7 @@ fun Module.stashDomainModule() {
     factoryOf(::LoadStashManagementStashesUseCase)
     factoryOf(::ObserveHomeStashSummaryUseCase)
     factoryOf(::AddProductToStashUseCase)
+    factoryOf(::AddRecipeToStashUseCase)
     factoryOf(::StartShoppingSessionUseCase)
     factoryOf(::AddToShoppingSessionUseCase)
     factoryOf(::ConfirmShoppingSessionUseCase)

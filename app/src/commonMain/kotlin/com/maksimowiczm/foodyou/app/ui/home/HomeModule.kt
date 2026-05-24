@@ -42,7 +42,7 @@ fun Module.home() {
             stashOwnerProvider = get(),
         )
     }
-    viewModel { HomeStashCardViewModel(observeHomeStashSummaryUseCase = get()) }
+    viewModel { HomeStashCardViewModel(observeHomeStashSummaryUseCase = get(), observeFoodUseCase = get()) }
     viewModel { (preferredStashId: StashDefinitionId?) ->
         HomeStashQuickAddViewModel(
             preferredStashId = preferredStashId,
@@ -58,7 +58,7 @@ fun Module.home() {
             recipeRepository = get(),
             stashRepository = get(),
             stashOwnerProvider = get(),
-            createAnonymousDishSnapshotUseCase = get(),
+            addRecipeToStashUseCase = get(),
         )
     }
 

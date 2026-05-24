@@ -1,113 +1,69 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
-import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
-import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.result.Result.Error
 import com.maksimowiczm.foodyou.common.result.Result.Success
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
-import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNotNull
 import kotlinx.coroutines.runBlocking
 
 class CreateManualStashSnapshotUseCaseTest {
     @Test
-    fun `when first manual quick add is created then default stash snapshot and audit movement are stored`() =
-        runBlocking {
-            val stashRepository = FakeStashRepository()
-            val useCase =
-                CreateManualStashSnapshotUseCase(
-                    stashRepository = stashRepository,
-                    stashOwnerProvider = localOwnerProvider(),
-                    transactionProvider = FakeTransactionProvider(),
-                    dateProvider = FixedDateProvider(),
-                    logger = NoOpLogger,
-                )
-
-            val result =
-                useCase.create(
-                    name = "Quick yogurt",
-                    nutritionFacts =
-                        NutritionFacts(
-                            energy = 250.0.toNutrientValue(),
-                            proteins = 25.0.toNutrientValue(),
-                            carbohydrates = 10.0.toNutrientValue(),
-                            fats = 5.0.toNutrientValue(),
-                        ),
-                    measurement = Measurement.Gram(250.0),
-                )
-
-            val success =
-                assertIs<
-                    Success<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>
-                >(result)
-            val item = stashRepository.allItems().single()
-            val snapshot = assertIs<RawProductSnapshot>(item.snapshot)
-
-            assertEquals(StashName.from("Stash"), stashRepository.allStashes().single().name)
-            assertEquals(success.data.stashId, stashRepository.allStashes().single().id)
-            assertEquals(null, snapshot.productId)
-            assertEquals("Quick yogurt", snapshot.name)
-            assertEquals(StashMeasurement.grams(250.0), item.measurement)
-            assertEquals(250.0, snapshot.totalWeight)
-            assertEquals(100.0, snapshot.nutritionFacts.energy.value)
-            assertEquals(10.0, snapshot.nutritionFacts.proteins.value)
-            assertEquals(4.0, snapshot.nutritionFacts.carbohydrates.value)
-            assertEquals(2.0, snapshot.nutritionFacts.fats.value)
-            assertEquals(
-                StashMovementOperation.ManualQuickAdd,
-                stashRepository.allMovements().single().operation,
-            )
-        }
-
-    @Test
-    fun `when liquid measurement is used then canonical stash quantity is normalized to milliliters`() =
-        runBlocking {
-            val stash = sampleStash()
-            val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
-            val useCase =
-                CreateManualStashSnapshotUseCase(
-                    stashRepository = stashRepository,
-                    stashOwnerProvider = localOwnerProvider(),
-                    transactionProvider = FakeTransactionProvider(),
-                    dateProvider = FixedDateProvider(),
-                    logger = NoOpLogger,
-                )
-
-            val result =
-                useCase.create(
-                    name = "Quick juice",
-                    nutritionFacts = nutritionWithEnergy(80.0),
-                    measurement = Measurement.FluidOunce(8.0),
-                    stashId = stash.id,
-                )
-
-            assertIs<Success<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>>(result)
-            val item = stashRepository.allItems().single()
-            val snapshot = assertIs<RawProductSnapshot>(item.snapshot)
-
-            assertEquals(MeasurementType.Milliliter, item.measurement.type)
-            assertEquals(236.58824, item.measurement.measurement.rawValue, 0.00001)
-            assertEquals(true, snapshot.isLiquid)
-            val normalizedEnergy = assertNotNull(snapshot.nutritionFacts.energy.value)
-            assertEquals(
-                80.0 / (item.measurement.measurement.rawValue / 100.0),
-                normalizedEnergy,
-                0.00001,
-            )
-        }
-
-    @Test
-    fun `when measurement is unsupported then it returns validation error`() = runBlocking {
+    fun `when manual quick add succeeds then it creates catalog product stash item and movement`() = runBlocking {
+        val productRepository = FakeProductRepository()
+        val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash()))
         val useCase =
             CreateManualStashSnapshotUseCase(
+                productRepository = productRepository,
+                stashRepository = stashRepository,
+                stashOwnerProvider = localOwnerProvider(),
+                transactionProvider = FakeTransactionProvider(),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
+
+        val result =
+            useCase.create(
+                name = "Quick yogurt",
+                nutritionFacts = NutritionFacts.Empty,
+                measurement = Measurement.Gram(250.0),
+                stashId = sampleStash().id,
+            )
+
+        val success =
+            assertIs<Success<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>>(result)
+        assertEquals(sampleStash().id, success.data.stashId)
+        assertEquals(1L, success.data.itemId.value)
+        val createdProduct = productRepository.allProducts().single()
+        assertEquals(FoodId.Product(1L), createdProduct.id)
+        assertEquals("Quick yogurt", createdProduct.name)
+        assertEquals(null, createdProduct.brand)
+        assertEquals(null, createdProduct.barcode)
+        assertEquals(null, createdProduct.note)
+        assertEquals(false, createdProduct.isLiquid)
+        assertEquals(null, createdProduct.packageWeight)
+        assertEquals(null, createdProduct.servingWeight)
+        assertEquals(com.maksimowiczm.foodyou.common.domain.food.FoodSource.Type.User, createdProduct.source.type)
+        assertEquals(
+            StashFoodRef.Product(FoodId.Product(1L)),
+            stashRepository.allItems().single().foodRef,
+        )
+        assertEquals(StashMeasurement.grams(250.0), stashRepository.allItems().single().measurement)
+        assertEquals(StashMovementOperation.ManualQuickAdd, stashRepository.allMovements().single().operation)
+    }
+
+    @Test
+    fun `when manual quick add uses unsupported measurement then it fails before creating product`() = runBlocking {
+        val productRepository = FakeProductRepository()
+        val useCase =
+            CreateManualStashSnapshotUseCase(
+                productRepository = productRepository,
                 stashRepository = FakeStashRepository(),
                 stashOwnerProvider = localOwnerProvider(),
                 transactionProvider = FakeTransactionProvider(),
@@ -117,17 +73,15 @@ class CreateManualStashSnapshotUseCaseTest {
 
         val result =
             useCase.create(
-                name = "Quick oats",
+                name = "Quick yogurt",
                 nutritionFacts = NutritionFacts.Empty,
                 measurement = Measurement.Package(1.0),
             )
 
         assertEquals(
             CreateManualStashSnapshotError.InvalidMeasurement,
-            assertIs<
-                Error<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>
-            >(result)
-                .error,
+            assertIs<Error<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>>(result).error,
         )
+        assertEquals(emptyList(), productRepository.allProducts())
     }
 }

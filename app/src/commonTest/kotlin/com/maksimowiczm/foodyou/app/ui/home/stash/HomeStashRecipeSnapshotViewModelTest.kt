@@ -3,7 +3,8 @@ package com.maksimowiczm.foodyou.app.ui.home.stash
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
+import com.maksimowiczm.foodyou.stash.domain.usecase.AddRecipeToStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeRecipeRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
@@ -81,7 +82,7 @@ class HomeStashRecipeSnapshotViewModelTest {
     }
 
     @Test
-    fun `when form is valid, it creates anonymous dish snapshot in stash`() = runBlocking {
+    fun `when form is valid, it creates recipe ref in stash`() = runBlocking {
         val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash()))
         val viewModel = snapshotViewModel(stashRepository = stashRepository)
 
@@ -92,9 +93,9 @@ class HomeStashRecipeSnapshotViewModelTest {
         viewModel.save()
         yield()
 
-        val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(Measurement.Serving(2.0), createdSnapshot.totalAmount)
-        assertEquals(sampleRecipe().totalWeight, createdSnapshot.totalWeight)
+        val createdRef = assertIs<StashFoodRef.Recipe>(stashRepository.allItems().single().foodRef)
+        assertEquals(Measurement.Serving(2.0), createdRef.totalAmount)
+        assertEquals(sampleRecipe().totalWeight, createdRef.totalWeight)
         assertEquals(null, viewModel.state.value.error)
     }
 
@@ -109,9 +110,9 @@ class HomeStashRecipeSnapshotViewModelTest {
         viewModel.save()
         yield()
 
-        val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(Measurement.Gram(250.0), createdSnapshot.totalAmount)
-        assertEquals(250.0, createdSnapshot.totalWeight)
+        val createdRef = assertIs<StashFoodRef.Recipe>(stashRepository.allItems().single().foodRef)
+        assertEquals(Measurement.Gram(250.0), createdRef.totalAmount)
+        assertEquals(250.0, createdRef.totalWeight)
         assertEquals(MeasurementType.Gram, viewModel.state.value.amountUnit)
     }
 
@@ -130,9 +131,9 @@ class HomeStashRecipeSnapshotViewModelTest {
         viewModel.save()
         yield()
 
-        val createdSnapshot = assertIs<AnonymousDishSnapshot>(stashRepository.allItems().single().snapshot)
-        assertEquals(Measurement.Milliliter(500.0), createdSnapshot.totalAmount)
-        assertEquals(500.0, createdSnapshot.totalWeight)
+        val createdRef = assertIs<StashFoodRef.Recipe>(stashRepository.allItems().single().foodRef)
+        assertEquals(Measurement.Milliliter(500.0), createdRef.totalAmount)
+        assertEquals(500.0, createdRef.totalWeight)
         assertEquals(MeasurementType.Milliliter, viewModel.state.value.amountUnit)
     }
 
@@ -146,14 +147,17 @@ class HomeStashRecipeSnapshotViewModelTest {
             recipeRepository = recipeRepository,
             stashRepository = stashRepository,
             stashOwnerProvider = localOwnerProvider(),
-            createAnonymousDishSnapshotUseCase =
-                CreateAnonymousDishSnapshotUseCase(
-                    recipeRepository = recipeRepository,
-                    stashRepository = stashRepository,
-                    stashOwnerProvider = localOwnerProvider(),
-                    transactionProvider = FakeTransactionProvider(),
-                    dateProvider = FixedDateProvider(),
-                    logger = NoOpLogger,
+            addRecipeToStashUseCase =
+                AddRecipeToStashUseCase(
+                    createAnonymousDishSnapshotUseCase =
+                        CreateAnonymousDishSnapshotUseCase(
+                            recipeRepository = recipeRepository,
+                            stashRepository = stashRepository,
+                            stashOwnerProvider = localOwnerProvider(),
+                            transactionProvider = FakeTransactionProvider(),
+                            dateProvider = FixedDateProvider(),
+                            logger = NoOpLogger,
+                        )
                 ),
             coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
         )

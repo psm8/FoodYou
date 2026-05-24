@@ -97,7 +97,7 @@ internal data class ShoppingSessionListItem(
     internal val sessionItem: ShoppingSessionItem,
 ) {
     val name: String
-        get() = sessionItem.snapshot.name
+        get() = sessionItem.productDetails.name
 
     val measurement: Measurement
         get() = sessionItem.measurement.measurement
@@ -107,7 +107,7 @@ internal data class ShoppingSessionListItem(
 
     val totalCalories: Double
         get() =
-            (sessionItem.snapshot.nutritionFacts.energy.value ?: 0.0) *
+            (sessionItem.productDetails.nutritionFacts.energy.value ?: 0.0) *
                 (parsedQuantityAmount / 100.0)
 
     private val parsedQuantityAmount: Double

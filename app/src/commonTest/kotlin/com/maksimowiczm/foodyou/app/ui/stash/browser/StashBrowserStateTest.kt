@@ -1,7 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.sampleRawProductItem
 import kotlin.test.Test
@@ -127,8 +127,9 @@ class StashBrowserStateTest {
         createdAt: kotlinx.datetime.LocalDateTime = FIXED_NOW,
     ): StashBrowserItem =
         StashBrowserItem(
-            id = StashItemId(id),
+            id = StashEntryId(id),
             name = name,
+            isNameLoading = false,
             quantity = quantity,
             createdAt = createdAt,
             stashName = "Pantry",

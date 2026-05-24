@@ -4,7 +4,7 @@ import kotlin.jvm.JvmInline
 
 @JvmInline value class StashDefinitionId(val value: Long)
 
-@JvmInline value class StashItemId(val value: Long)
+@JvmInline value class StashEntryId(val value: Long)
 
 @JvmInline value class StashMovementId(val value: Long)
 

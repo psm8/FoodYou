@@ -8,9 +8,9 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSession
-import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
+import com.maksimowiczm.foodyou.stash.domain.entity.ShoppingSessionProductDetails
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import kotlinx.coroutines.flow.first
 
 sealed interface AddToShoppingSessionError {
@@ -57,7 +57,8 @@ class AddToShoppingSessionUseCase(
         return Ok(
             session.add(
                 productId = product.id,
-                snapshot = RawProductSnapshot.from(product),
+                foodRef = StashFoodRef.Product(product.id),
+                productDetails = ShoppingSessionProductDetails.from(product),
                 measurement = stashMeasurement,
             )
         )

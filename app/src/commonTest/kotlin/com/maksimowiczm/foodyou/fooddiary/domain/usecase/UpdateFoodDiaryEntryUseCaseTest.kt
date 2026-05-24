@@ -13,6 +13,7 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeFoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeMealRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.FakeProductRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeStashRepository
 import com.maksimowiczm.foodyou.stash.domain.usecase.FakeTransactionProvider
 import com.maksimowiczm.foodyou.stash.domain.usecase.FixedDateProvider
@@ -229,6 +230,7 @@ class UpdateFoodDiaryEntryUseCaseTest {
         restoreLinkedDiaryEntryStashUseCase =
             com.maksimowiczm.foodyou.stash.domain.usecase.RestoreLinkedDiaryEntryStashUseCase(
                 stashRepository = stashRepository,
+                productRepository = FakeProductRepository(),
                 dateProvider = FixedDateProvider(),
                 logger = NoOpLogger,
             ),

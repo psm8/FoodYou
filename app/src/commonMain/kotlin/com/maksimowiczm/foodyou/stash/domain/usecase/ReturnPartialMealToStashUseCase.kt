@@ -2,29 +2,29 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
-import com.maksimowiczm.foodyou.stash.domain.entity.StashSnapshot
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -49,11 +49,12 @@ sealed interface ReturnPartialMealToStashError {
 
 data class ReturnPartialMealToStashResult(
     val stashId: StashDefinitionId,
-    val itemId: StashItemId,
+    val itemId: StashEntryId,
 )
 
 class ReturnPartialMealToStashUseCase(
     private val entryRepository: FoodDiaryEntryRepository,
+    private val productRepository: ProductRepository,
     private val stashRepository: StashRepository,
     private val stashOwnerProvider: StashOwnerProvider,
     private val transactionProvider: TransactionProvider,
@@ -146,32 +147,46 @@ class ReturnPartialMealToStashUseCase(
                             message = { "A stash must be selected when more than one stash exists." },
                         )
                 }
-            val snapshot =
-                buildReturnedSnapshot(
-                    entry = entry,
-                    measurementToReturn = measurementToReturn,
+            val source = resolveReturnSource(entry, measurementToReturn, targetStash.id)
+                ?: return@withTransaction logger.logAndReturnFailure(
+                    tag = TAG,
+                    error = ReturnPartialMealToStashError.InvalidMeasurement,
+                    message = { "Diary entry $entryId does not provide enough context to return $measurementToReturn." },
                 )
-            val returnedItem =
-                StashItem.new(
-                    stashId = targetStash.id,
-                    snapshot = snapshot,
-                    measurement = measurementToReturn,
-                    createdAt = now,
-                )
-            val itemId = stashRepository.insertItem(returnedItem)
+
+            val itemId =
+                if (source.existingItem == null) {
+                    stashRepository.insertItem(
+                        StashEntry.new(
+                            stashId = targetStash.id,
+                            foodRef = source.foodRef,
+                            measurement = source.returnedMeasurement,
+                            createdAt = now,
+                        )
+                    )
+                } else {
+                    stashRepository.updateItem(
+                        source.existingItem.copy(
+                            measurement = (source.existingItem.measurement + source.returnedMeasurement).normalize(),
+                        )
+                    )
+                    source.existingItem.id
+                }
+
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = targetStash.id,
                     itemId = itemId,
                     operation = StashMovementOperation.ReturnToStash,
-                    measurementChange = measurementToReturn,
+                    measurementChange = source.returnedMeasurement,
                     linkedDiaryEntryId = LinkedDiaryEntryId(entry.id.value),
                     createdAt = now,
                 )
             )
+
             entryRepository.update(
                 entry.copy(
-                    measurement = entry.measurement * remainingRatio,
+                    measurement = (entry.measurement * remainingRatio),
                     mealId = mealId ?: entry.mealId,
                     date = date ?: entry.date,
                     updatedAt = now,
@@ -182,52 +197,90 @@ class ReturnPartialMealToStashUseCase(
         }
     }
 
-    private suspend fun buildReturnedSnapshot(
+    private suspend fun resolveReturnSource(
         entry: FoodDiaryEntry,
         measurementToReturn: StashMeasurement,
-    ): StashSnapshot {
-        // Prefer the original linked stash snapshot when history still points to it so leftovers keep
-        // the same immutable product/recipe metadata as the consumed stock.
-        val linkedSnapshot = findLinkedSnapshot(entry.id)
-        return when (linkedSnapshot) {
-            is RawProductSnapshot ->
-                linkedSnapshot.copy(
-                    packageWeight = measurementToReturn.measurement.rawValue,
-                    servingWeight = linkedSnapshot.servingWeight?.coerceAtMost(measurementToReturn.measurement.rawValue),
-                )
-
-            is AnonymousDishSnapshot ->
-                linkedSnapshot.copy(
-                    totalWeight = measurementToReturn.measurement.rawValue,
-                    totalAmount = measurementToReturn.measurement,
-                )
-
-            null -> entry.food.toReturnedSnapshot(measurementToReturn)
+        targetStashId: StashDefinitionId,
+    ): ReturnSource? {
+        val linkedMovement =
+            stashRepository.getLinkedDiaryEntryMovements(LinkedDiaryEntryId(entry.id.value)).firstOrNull()
+        val linkedItem = linkedMovement?.let { stashRepository.getItem(it.itemId) }
+        if (linkedItem != null) {
+            val returnedMeasurement = linkedItem.foodRef.toReturnedMeasurement(linkedItem.measurement.type, measurementToReturn) ?: return null
+            val existingItem =
+                if (linkedItem.stashId == targetStashId) {
+                    linkedItem
+                } else {
+                    null
+                }
+            return ReturnSource(existingItem = existingItem, foodRef = linkedItem.foodRef, returnedMeasurement = returnedMeasurement)
         }
+
+        val diaryFood = entry.food as? DiaryFoodProduct ?: return null
+        val productId = diaryFood.ensureProductId(productRepository)
+        return ReturnSource(
+            existingItem = findMergeCandidate(targetStashId, StashFoodRef.Product(productId), measurementToReturn.type),
+            foodRef = StashFoodRef.Product(productId),
+            returnedMeasurement = measurementToReturn,
+        )
     }
 
-    private suspend fun findLinkedSnapshot(entryId: FoodDiaryEntryId): StashSnapshot? {
-        val linkedMovements =
-            stashRepository
-                .getLinkedDiaryEntryMovements(LinkedDiaryEntryId(entryId.value))
-                .sortedWith(
-                    compareBy<StashMovement> { movement ->
-                        if (movement.measurementChange.measurement.rawValue < 0.0) {
-                            0
-                        } else {
-                            1
-                        }
-                    }.thenBy { it.id.value }
-                )
-
-        linkedMovements.forEach { movement ->
-            val snapshot = stashRepository.getItem(movement.itemId)?.snapshot
-            if (snapshot != null) {
-                return snapshot
-            }
+    private suspend fun findMergeCandidate(
+        stashId: StashDefinitionId,
+        foodRef: StashFoodRef,
+        measurementType: MeasurementType,
+    ): StashEntry? =
+        stashRepository.observeStashContents(stashId).first().firstOrNull {
+            it.foodRef == foodRef && it.measurement.type == measurementType
         }
 
-        return null
+    private fun StashFoodRef.toReturnedMeasurement(
+        stashMeasurementType: MeasurementType,
+        measurementToReturn: StashMeasurement,
+    ): StashMeasurement? =
+        when (this) {
+            is StashFoodRef.Product ->
+                if (measurementToReturn.type == stashMeasurementType) {
+                    measurementToReturn
+                } else {
+                    null
+                }
+
+            is StashFoodRef.Recipe -> recipeReturnedMeasurement(stashMeasurementType, measurementToReturn)
+        }
+
+    private fun StashFoodRef.Recipe.recipeReturnedMeasurement(
+        stashMeasurementType: MeasurementType,
+        measurementToReturn: StashMeasurement,
+    ): StashMeasurement? {
+        if (measurementToReturn.type == stashMeasurementType) {
+            return measurementToReturn
+        }
+
+        val requestedWeightType =
+            when (measurementToReturn.type) {
+                MeasurementType.Gram,
+                MeasurementType.Milliliter,
+                MeasurementType.Ounce,
+                MeasurementType.FluidOunce,
+                -> true
+
+                else -> false
+            }
+        val stashPortionType =
+            when (stashMeasurementType) {
+                MeasurementType.Serving,
+                MeasurementType.Package,
+                -> true
+
+                else -> false
+            }
+        if (!requestedWeightType || !stashPortionType || totalWeight <= EPSILON) {
+            return null
+        }
+
+        val rawValueChange = totalAmount.rawValue * (measurementToReturn.measurement.rawValue / totalWeight)
+        return StashMeasurement(Measurement.from(stashMeasurementType, rawValueChange))
     }
 
     private fun FoodDiaryEntry.toStashMeasurement(): StashMeasurement =
@@ -237,32 +290,11 @@ class ReturnPartialMealToStashUseCase(
             StashMeasurement.grams(weight)
         }
 
-    private fun DiaryFood.toReturnedSnapshot(measurementToReturn: StashMeasurement): StashSnapshot =
-        when (this) {
-            is DiaryFoodProduct ->
-                RawProductSnapshot(
-                    productId = null,
-                    name = name,
-                    brand = null,
-                    barcode = null,
-                    note = note,
-                    isLiquid = isLiquid,
-                    packageWeight = measurementToReturn.measurement.rawValue,
-                    servingWeight = servingWeight?.coerceAtMost(measurementToReturn.measurement.rawValue),
-                    source = source,
-                    nutritionFacts = nutritionFacts,
-                )
-
-            is DiaryFoodRecipe ->
-                AnonymousDishSnapshot(
-                    name = name,
-                    nutritionFacts = nutritionFacts,
-                    note = note,
-                    isLiquid = isLiquid,
-                    totalWeight = measurementToReturn.measurement.rawValue,
-                    totalAmount = measurementToReturn.measurement,
-                )
-        }
+    private data class ReturnSource(
+        val existingItem: StashEntry?,
+        val foodRef: StashFoodRef,
+        val returnedMeasurement: StashMeasurement,
+    )
 
     private companion object {
         const val TAG = "ReturnPartialMealToStashUseCase"

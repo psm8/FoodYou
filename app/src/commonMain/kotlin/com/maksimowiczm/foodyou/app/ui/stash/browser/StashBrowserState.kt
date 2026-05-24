@@ -1,11 +1,11 @@
 package com.maksimowiczm.foodyou.app.ui.stash.browser
 
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.app.ui.stash.StashFoodDisplay
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.usecase.ManualStashAction
 import kotlinx.datetime.LocalDateTime
@@ -30,25 +30,31 @@ internal enum class StashBrowserItemType {
 }
 
 internal data class StashBrowserItem(
-    val id: StashItemId,
+    val id: StashEntryId,
     val name: String,
+    val isNameLoading: Boolean,
     val quantity: StashMeasurement,
     val createdAt: LocalDateTime,
     val stashName: String,
     val type: StashBrowserItemType,
 ) {
     companion object {
-        fun from(item: StashItem, stashName: String): StashBrowserItem =
+        fun from(
+            item: StashEntry,
+            stashName: String,
+            display: StashFoodDisplay = StashFoodDisplay.loading(),
+        ): StashBrowserItem =
             StashBrowserItem(
                 id = item.id,
-                name = item.snapshot.name,
+                name = display.name,
+                isNameLoading = display.isLoading,
                 quantity = item.measurement,
                 createdAt = item.createdAt,
                 stashName = stashName,
                 type =
-                    when (item.snapshot) {
-                        is RawProductSnapshot -> StashBrowserItemType.Product
-                        is AnonymousDishSnapshot -> StashBrowserItemType.Dish
+                    when (item.foodRef) {
+                        is StashFoodRef.Product -> StashBrowserItemType.Product
+                        is StashFoodRef.Recipe -> StashBrowserItemType.Dish
                     },
             )
     }
@@ -214,4 +220,3 @@ private inline fun <reified T : StashBrowserActionDialog> StashBrowserActionDial
 }
 
 private fun String.normalizedOrDefault(default: String): String = trim().ifEmpty { default }
-

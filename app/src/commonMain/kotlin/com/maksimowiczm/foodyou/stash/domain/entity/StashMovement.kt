@@ -17,7 +17,7 @@ enum class StashMovementOperation {
 data class StashMovement(
     val id: StashMovementId,
     val stashId: StashDefinitionId,
-    val itemId: StashItemId,
+    val itemId: StashEntryId,
     val operation: StashMovementOperation,
     val measurementChange: StashMeasurement,
     val linkedDiaryEntryId: LinkedDiaryEntryId?,
@@ -27,7 +27,7 @@ data class StashMovement(
     companion object {
         fun new(
             stashId: StashDefinitionId,
-            itemId: StashItemId,
+            itemId: StashEntryId,
             operation: StashMovementOperation,
             measurementChange: StashMeasurement,
             linkedDiaryEntryId: LinkedDiaryEntryId?,

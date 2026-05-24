@@ -27,12 +27,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.stash.displayLabel
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_add
 import foodyou.app.generated.resources.action_quick_add
 import foodyou.app.generated.resources.action_view_stash
+import foodyou.app.generated.resources.description_loading
 import foodyou.app.generated.resources.description_home_stash_stashes
 import foodyou.app.generated.resources.description_home_stash_total_items
 import foodyou.app.generated.resources.headline_stash
@@ -41,7 +42,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 internal fun HomeStashCard(
-    onConsumeItem: (StashItemId) -> Unit,
+    onConsumeItem: (StashEntryId) -> Unit,
     onViewStash: (StashDefinitionId?) -> Unit,
     onAddToStash: (StashDefinitionId?) -> Unit,
     onQuickAddToStash: (StashDefinitionId?) -> Unit,
@@ -50,18 +51,36 @@ internal fun HomeStashCard(
     val viewModel: HomeStashCardViewModel = koinViewModel()
     val state = viewModel.state.collectAsStateWithLifecycle().value
 
-    if (!state.isVisible) {
+    if (!state.isVisible && !state.isLoading) {
         return
     }
 
-    val totalItemsLabel =
-        org.jetbrains.compose.resources.pluralStringResource(
-            Res.plurals.description_home_stash_total_items,
-            state.totalItemCount,
-            state.totalItemCount,
-        )
-
     FoodYouHomeCard(modifier = modifier) {
+        if (state.isLoading) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.headline_stash),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = stringResource(Res.string.description_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            return@FoodYouHomeCard
+        }
+
+        val totalItemsLabel =
+            org.jetbrains.compose.resources.pluralStringResource(
+                Res.plurals.description_home_stash_total_items,
+                state.totalItemCount,
+                state.totalItemCount,
+            )
+
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -115,7 +134,15 @@ internal fun HomeStashCard(
                         ListItem(
                             modifier = Modifier.clickable { onConsumeItem(item.id) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text(item.name) },
+                            headlineContent = {
+                                Text(
+                                    if (item.isLoading) {
+                                        stringResource(Res.string.description_loading)
+                                    } else {
+                                        item.name
+                                    }
+                                )
+                            },
                             supportingContent = { Text(item.stashName) },
                             trailingContent = {
                                 Text(

@@ -1,22 +1,22 @@
 package com.maksimowiczm.foodyou.stash.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
-import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
-import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
+import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinition
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
+import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
@@ -36,7 +36,7 @@ sealed interface CreateAnonymousDishSnapshotError {
 
 data class CreateAnonymousDishSnapshotResult(
     val stashId: StashDefinitionId,
-    val itemId: StashItemId,
+    val itemId: StashEntryId,
 )
 
 class CreateAnonymousDishSnapshotUseCase(
@@ -113,19 +113,16 @@ class CreateAnonymousDishSnapshotUseCase(
                         )
                 }
 
-            val item =
-                StashItem.new(
-                    stashId = targetStash.id,
-                    snapshot =
-                        AnonymousDishSnapshot.from(
-                            recipe = recipe,
-                            totalAmount = totalAmount.measurement,
-                            servingsMade = servings,
-                        ),
-                    measurement = totalAmount,
-                    createdAt = now,
+            val foodRef = StashFoodRef.Recipe.from(recipe = recipe, totalAmount = totalAmount.measurement, servingsMade = servings)
+            val itemId =
+                stashRepository.insertItem(
+                    StashEntry.new(
+                        stashId = targetStash.id,
+                        foodRef = foodRef,
+                        measurement = totalAmount,
+                        createdAt = now,
+                    )
                 )
-            val itemId = stashRepository.insertItem(item)
             stashRepository.insertMovement(
                 StashMovement.new(
                     stashId = targetStash.id,
@@ -136,7 +133,6 @@ class CreateAnonymousDishSnapshotUseCase(
                     createdAt = now,
                 )
             )
-
             Ok(CreateAnonymousDishSnapshotResult(stashId = targetStash.id, itemId = itemId))
         }
     }
@@ -146,4 +142,3 @@ class CreateAnonymousDishSnapshotUseCase(
         const val DEFAULT_STASH_NAME = "Stash"
     }
 }
-

@@ -8,14 +8,8 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
-import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipeIngredient
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
@@ -131,37 +125,6 @@ class LogRecipeToMealWithStashSubtractionUseCase(
 
             StashSubtractionMode.Partial ->
                 ingredients.flatMap(RecipeIngredientStashAvailability::allocations)
-        }
-
-    private fun Recipe.toDiaryFood(): DiaryFoodRecipe =
-        DiaryFoodRecipe(
-            name = headline,
-            servings = servings,
-            ingredients = ingredients.map { it.toDiaryFoodIngredient() },
-            isLiquid = isLiquid,
-            note = note,
-        )
-
-    private fun RecipeIngredient.toDiaryFoodIngredient(): DiaryFoodRecipeIngredient =
-        DiaryFoodRecipeIngredient(
-            food = food.toDiaryFood(),
-            measurement = measurement,
-        )
-
-    private fun com.maksimowiczm.foodyou.food.domain.entity.Food.toDiaryFood(): DiaryFood =
-        when (this) {
-            is Product ->
-                DiaryFoodProduct(
-                    name = headline,
-                    nutritionFacts = nutritionFacts,
-                    servingWeight = servingWeight,
-                    totalWeight = totalWeight,
-                    isLiquid = isLiquid,
-                    source = source,
-                    note = note,
-                )
-
-            is Recipe -> toDiaryFood()
         }
 
     private companion object {

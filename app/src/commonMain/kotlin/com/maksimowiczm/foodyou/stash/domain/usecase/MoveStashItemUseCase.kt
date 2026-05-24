@@ -7,8 +7,8 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItemId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
@@ -16,7 +16,7 @@ import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
 
 sealed interface MoveStashItemError {
-    data class ItemNotFound(val itemId: StashItemId) : MoveStashItemError
+    data class ItemNotFound(val itemId: StashEntryId) : MoveStashItemError
 
     data class TargetStashNotFound(val stashId: StashDefinitionId) : MoveStashItemError
 
@@ -31,9 +31,9 @@ class MoveStashItemUseCase(
     private val logger: Logger,
 ) {
     suspend fun move(
-        itemId: StashItemId,
+        itemId: StashEntryId,
         targetStashId: StashDefinitionId,
-    ): Result<StashItem, MoveStashItemError> {
+    ): Result<StashEntry, MoveStashItemError> {
         val ownerId = stashOwnerProvider.current()
         return transactionProvider.withTransaction {
             val stashes = stashRepository.observeStashes(ownerId).first()

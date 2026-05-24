@@ -7,7 +7,7 @@ import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.StashItem
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntry
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
 import kotlinx.coroutines.flow.first
@@ -39,7 +39,7 @@ class AssessRecipeStashAvailabilityUseCase(
         return Ok(buildRecipeStashAvailability(recipe, measurement, candidateItems))
     }
 
-    private suspend fun loadVisibleStashItems(): List<StashItem> =
+    private suspend fun loadVisibleStashItems(): List<StashEntry> =
         stashRepository
             .observeStashes(stashOwnerProvider.current())
             .first()

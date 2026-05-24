@@ -10,13 +10,13 @@ import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
-import com.maksimowiczm.foodyou.stash.domain.entity.AnonymousDishSnapshot
+import com.maksimowiczm.foodyou.stash.domain.usecase.AddRecipeToStashError
+import com.maksimowiczm.foodyou.stash.domain.usecase.AddRecipeToStashUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.repository.StashOwnerProvider
 import com.maksimowiczm.foodyou.stash.domain.repository.StashRepository
-import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotError
-import com.maksimowiczm.foodyou.stash.domain.usecase.CreateAnonymousDishSnapshotUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +33,7 @@ internal class HomeStashRecipeSnapshotViewModel(
     recipeRepository: RecipeRepository,
     stashRepository: StashRepository,
     stashOwnerProvider: StashOwnerProvider,
-    private val createAnonymousDishSnapshotUseCase: CreateAnonymousDishSnapshotUseCase,
+    private val addRecipeToStashUseCase: AddRecipeToStashUseCase,
     coroutineScope: CoroutineScope? = null,
 ) : ViewModel() {
     private val scope = coroutineScope ?: viewModelScope
@@ -85,7 +85,7 @@ internal class HomeStashRecipeSnapshotViewModel(
                 val parsedServings = resolvedServingsMade.toPositiveIntOrNull()
                 val previewSnapshot =
                     if (recipe != null && parsedQuantity != null && parsedServings != null) {
-                        AnonymousDishSnapshot.from(
+                        StashFoodRef.Recipe.from(
                             recipe = recipe,
                             totalAmount = parsedQuantity.measurement,
                             servingsMade = parsedServings,
@@ -105,7 +105,10 @@ internal class HomeStashRecipeSnapshotViewModel(
                     availableUnits = availableUnits,
                     stashes = stashes,
                     selectedStashId = resolvedSelectedStashId,
-                    previewNutritionFacts = previewSnapshot?.totalNutritionFacts,
+                    previewNutritionFacts =
+                        previewSnapshot?.let { preview ->
+                            recipe?.nutritionFacts?.let { it * (preview.totalWeight / 100.0) }
+                        },
                 )
             }
             .combine(error) { state, error ->
@@ -166,7 +169,7 @@ internal class HomeStashRecipeSnapshotViewModel(
 
         scope.launch {
             val result =
-                createAnonymousDishSnapshotUseCase.create(
+                addRecipeToStashUseCase.add(
                     recipeId = recipeId,
                     stashId = currentState.selectedStashId,
                     totalAmount = quantity,
@@ -192,17 +195,17 @@ internal class HomeStashRecipeSnapshotViewModel(
         }
     }
 
-    private fun CreateAnonymousDishSnapshotError.toUiError(): HomeStashRecipeSnapshotError =
+    private fun AddRecipeToStashError.toUiError(): HomeStashRecipeSnapshotError =
         when (this) {
-            is CreateAnonymousDishSnapshotError.RecipeNotFound ->
+            is AddRecipeToStashError.RecipeNotFound ->
                 HomeStashRecipeSnapshotError.RecipeNotFound
-            is CreateAnonymousDishSnapshotError.StashNotFound ->
+            is AddRecipeToStashError.StashNotFound ->
                 HomeStashRecipeSnapshotError.SaveFailed
-            CreateAnonymousDishSnapshotError.StashSelectionRequired ->
+            AddRecipeToStashError.StashSelectionRequired ->
                 HomeStashRecipeSnapshotError.StashSelectionRequired
-            CreateAnonymousDishSnapshotError.NonPositiveQuantity ->
+            AddRecipeToStashError.NonPositiveQuantity ->
                 HomeStashRecipeSnapshotError.InvalidAmount
-            CreateAnonymousDishSnapshotError.NonPositiveServings ->
+            AddRecipeToStashError.NonPositiveServings ->
                 HomeStashRecipeSnapshotError.InvalidServings
         }
 }
@@ -254,9 +257,6 @@ internal enum class HomeStashRecipeSnapshotError {
 internal sealed interface HomeStashRecipeSnapshotEvent {
     data class Saved(val stashId: StashDefinitionId) : HomeStashRecipeSnapshotEvent
 }
-
-private val AnonymousDishSnapshot.totalNutritionFacts: NutritionFacts
-    get() = nutritionFacts * (totalWeight / 100.0)
 
 private fun String.toPositiveIntOrNull(): Int? {
     val parsedValue = toIntOrNull() ?: return null

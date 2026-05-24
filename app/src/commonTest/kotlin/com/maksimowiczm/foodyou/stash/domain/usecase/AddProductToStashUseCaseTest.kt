@@ -3,8 +3,8 @@ package com.maksimowiczm.foodyou.stash.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result.Error
 import com.maksimowiczm.foodyou.common.result.Result.Success
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
 import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import com.maksimowiczm.foodyou.stash.domain.entity.StashName
@@ -35,8 +35,8 @@ class AddProductToStashUseCaseTest {
             assertEquals(StashName.from("Stash"), stashRepository.allStashes().single().name)
             assertEquals(success.data.stashId, stashRepository.allStashes().single().id)
             assertEquals(
-                RawProductSnapshot.from(product),
-                stashRepository.allItems().single().snapshot,
+                StashFoodRef.Product(product.id),
+                stashRepository.allItems().single().foodRef,
             )
             assertEquals(
                 StashMeasurement.grams(250.0),

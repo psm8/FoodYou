@@ -79,8 +79,9 @@ class StashBrowserStateActionTest {
         quantity: StashMeasurement = StashMeasurement.grams(1.0),
     ) =
         StashBrowserItem(
-            id = com.maksimowiczm.foodyou.stash.domain.entity.StashItemId(id),
+            id = com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId(id),
             name = name,
+            isNameLoading = false,
             quantity = quantity,
             createdAt = com.maksimowiczm.foodyou.stash.domain.usecase.FIXED_NOW,
             stashName = "Stash",

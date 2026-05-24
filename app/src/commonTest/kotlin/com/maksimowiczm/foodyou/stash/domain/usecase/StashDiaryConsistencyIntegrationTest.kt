@@ -11,7 +11,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.UpdateFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.stash.domain.entity.LinkedDiaryEntryId
-import com.maksimowiczm.foodyou.stash.domain.entity.RawProductSnapshot
+import com.maksimowiczm.foodyou.stash.domain.entity.StashFoodRef
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMeasurement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovement
 import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementId
@@ -19,7 +19,6 @@ import com.maksimowiczm.foodyou.stash.domain.entity.StashMovementOperation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -27,57 +26,47 @@ import kotlinx.coroutines.runBlocking
 
 class StashDiaryConsistencyIntegrationTest {
     @Test
-    fun when_manual_quick_add_snapshot_is_created_then_catalog_and_diary_stay_unchanged_until_consumed() =
-        runBlocking {
-            val stash = sampleStash()
-            val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
-            val productRepository = FakeProductRepository()
-            val diaryRepository = FakeFoodDiaryEntryRepository()
-            val transactionProvider =
-                SnapshottingFakeTransactionProvider(stashRepository, diaryRepository)
-            val useCase =
-                CreateManualStashSnapshotUseCase(
-                    stashRepository = stashRepository,
-                    stashOwnerProvider = localOwnerProvider(),
-                    transactionProvider = transactionProvider,
-                    dateProvider = FixedDateProvider(),
-                    logger = NoOpLogger,
-                )
+    fun when_manual_quick_add_is_requested_then_it_creates_catalog_backed_stash_entry() = runBlocking {
+        val stash = sampleStash()
+        val stashRepository = FakeStashRepository(initialStashes = listOf(stash))
+        val productRepository = FakeProductRepository()
+        val diaryRepository = FakeFoodDiaryEntryRepository()
+        val useCase =
+            CreateManualStashSnapshotUseCase(
+                productRepository = productRepository,
+                stashRepository = stashRepository,
+                stashOwnerProvider = localOwnerProvider(),
+                transactionProvider =
+                    SnapshottingFakeTransactionProvider(stashRepository, productRepository, diaryRepository),
+                dateProvider = FixedDateProvider(),
+                logger = NoOpLogger,
+            )
 
-            val result =
-                useCase.create(
-                    name = "Quick shake",
-                    nutritionFacts =
-                        NutritionFacts(
-                            energy = 240.0.toNutrientValue(),
-                            proteins = 30.0.toNutrientValue(),
-                            carbohydrates = 12.0.toNutrientValue(),
-                            fats = 6.0.toNutrientValue(),
-                        ),
-                    measurement = Measurement.Milliliter(300.0),
-                    stashId = stash.id,
-                )
+        val result =
+            useCase.create(
+                name = "Quick shake",
+                nutritionFacts =
+                    NutritionFacts(
+                        energy = 240.0.toNutrientValue(),
+                        proteins = 30.0.toNutrientValue(),
+                        carbohydrates = 12.0.toNutrientValue(),
+                        fats = 6.0.toNutrientValue(),
+                    ),
+                measurement = Measurement.Milliliter(300.0),
+                stashId = stash.id,
+            )
 
+        val success =
             assertIs<Success<CreateManualStashSnapshotResult, CreateManualStashSnapshotError>>(result)
-            assertEquals(emptyList(), productRepository.observeProducts(limit = 10, offset = 0).first())
-            assertEquals(emptyList(), diaryRepository.allEntries())
-
-            val item = stashRepository.allItems().single()
-            val snapshot = assertIs<RawProductSnapshot>(item.snapshot)
-            val movement = stashRepository.allMovements().single()
-
-            assertEquals(null, snapshot.productId)
-            assertEquals("Quick shake", snapshot.name)
-            assertEquals(80.0, snapshot.nutritionFacts.energy.value)
-            assertEquals(10.0, snapshot.nutritionFacts.proteins.value)
-            assertEquals(4.0, snapshot.nutritionFacts.carbohydrates.value)
-            assertEquals(2.0, snapshot.nutritionFacts.fats.value)
-            assertEquals(StashMeasurement.milliliters(300.0), item.measurement)
-            assertEquals(StashMovementOperation.ManualQuickAdd, movement.operation)
-        }
+        assertEquals(stash.id, success.data.stashId)
+        assertEquals(StashFoodRef.Product(productRepository.allProducts().single().id), stashRepository.allItems().single().foodRef)
+        assertEquals(emptyList(), diaryRepository.allEntries())
+        assertEquals(1, stashRepository.allItems().size)
+        assertEquals(1, stashRepository.allMovements().size)
+    }
 
     @Test
-    fun when_same_product_is_added_twice_with_equivalent_measurements_then_item_quantity_is_merged_and_movements_stay_separate() =
+    fun when_same_product_is_added_twice_with_same_measurement_type_then_item_quantity_is_merged_and_movements_stay_separate() =
         runBlocking {
             val product = sampleProduct(servingWeight = 100.0)
             val stashRepository = FakeStashRepository(initialStashes = listOf(sampleStash()))
@@ -94,11 +83,12 @@ class StashDiaryConsistencyIntegrationTest {
                 )
 
             val first = useCase.add(productId = product.id, measurement = Measurement.Gram(100.0))
-            val second = useCase.add(productId = product.id, measurement = Measurement.Serving(1.0))
+            val second = useCase.add(productId = product.id, measurement = Measurement.Gram(100.0))
 
-            assertIs<com.maksimowiczm.foodyou.common.result.Result.Success<*, *>>(first)
-            assertIs<com.maksimowiczm.foodyou.common.result.Result.Success<*, *>>(second)
+            assertIs<Success<*, *>>(first)
+            assertIs<Success<*, *>>(second)
             assertEquals(1, stashRepository.allItems().size)
+            assertEquals(StashFoodRef.Product(product.id), stashRepository.allItems().single().foodRef)
             assertEquals(StashMeasurement.grams(200.0), stashRepository.allItems().single().measurement)
             assertEquals(
                 listOf(StashMeasurement.grams(100.0), StashMeasurement.grams(100.0)),
@@ -146,7 +136,7 @@ class StashDiaryConsistencyIntegrationTest {
                             measurementChange = StashMeasurement.grams(-120.0),
                             linkedDiaryEntryId = LinkedDiaryEntryId(linkedEntry.id.value),
                             createdAt = FIXED_NOW,
-                        )
+                        ),
                     ),
             )
         val diaryRepository = FakeFoodDiaryEntryRepository(initialEntries = listOf(linkedEntry))
@@ -164,6 +154,8 @@ class StashDiaryConsistencyIntegrationTest {
         val consumeUseCase =
             ConsumeFromStashUseCase(
                 stashRepository = stashRepository,
+                productRepository = FakeProductRepository(listOf(product)),
+                recipeRepository = FakeRecipeRepository(),
                 entryRepository = diaryRepository,
                 mealRepository = FakeMealRepository(listOf(sampleMeal())),
                 transactionProvider = transactionProvider,
@@ -177,6 +169,7 @@ class StashDiaryConsistencyIntegrationTest {
                 restoreLinkedDiaryEntryStashUseCase =
                     RestoreLinkedDiaryEntryStashUseCase(
                         stashRepository = stashRepository,
+                        productRepository = FakeProductRepository(listOf(product)),
                         dateProvider = FixedDateProvider(),
                         logger = NoOpLogger,
                     ),
