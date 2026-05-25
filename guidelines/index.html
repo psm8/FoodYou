@@ -17,7 +17,7 @@
 <body>
 
   <h1>Food Stash Feature — Evidence Page</h1>
-  <p>Canonical evidence for the food stash implementation on branch <code>feat/issue-40-47-stash-foodref-rollup</code>.</p>
+  <p>Canonical evidence for the food stash implementation and its follow-up issue branches.</p>
 
   <section class="step" data-step="1" data-kind="single">
     <p class="step-summary">Verified the Home screen shows the Kitchen stash card with Add and Quick Add entry points.</p>
@@ -318,8 +318,58 @@ exit 0</code></pre>
     exit 0</code></pre>
  </section>
 
-  <section class="step" data-step="50" data-kind="single">
-    <p class="step-summary">Default adjust mode changed to SetTo with mode-aware amount pre-fill.</p>
+ <section class="step" data-step="54" data-kind="single">
+   <p class="step-summary">Validated issue 54 against a real app stash browser state that exposes a recipe-backed row, then reran the focused stash availability and subtraction tests for the new direct sub-recipe path.</p>
+
+   <div class="step-how">
+     <p>Used the existing real app stash-browser capture that shows the live <code>Pizza</code> recipe row in <code>Fridge</code> as the UI evidence for the recipe-backed stash source, then reran the targeted issue 54 tests on branch <code>feat/issue-54-direct-subrecipe-stash</code>.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The real app evidence should still show a recipe-backed stash row available in the browser, and the focused tests should pass for direct recipe-entry allocation plus recipe-entry subtraction without consuming the matching product stash row.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-browser-after-add-real.png" alt="Android app stash browser showing the newly added Skyr row, the Pizza recipe row, and the original Skyr row together in Fridge">
+     <figcaption>Real app capture — stash browser with a recipe-backed row available for subtraction flows</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ $env:JAVA_HOME='C:\Users\admin\.jdks\jbr-21.0.11'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests "com.maksimowiczm.foodyou.stash.domain.usecase.RecipeStashAvailabilityUseCaseTest" --tests "com.maksimowiczm.foodyou.stash.domain.usecase.LogRecipeToMealWithStashSubtractionUseCaseTest"
+BUILD SUCCESSFUL in 21s
+77 actionable tasks: 3 executed, 74 up-to-date
+exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="57" data-kind="single">
+   <p class="step-summary">Validated the bundled issue 55-57 stash changes against a fresh real app stash-management capture from the installed emulator build, then reran the focused stash availability and subtraction tests covering direct, converted, partial, and nested recipe-first matching.</p>
+
+   <div class="step-how">
+     <p>Built and installed the debug app on <code>emulator-5554</code>, launched the real app with <code>MainActivity</code>, and captured the populated <code>Fridge</code> stash-management screen from the running emulator. Because direct <code>adb shell input text</code> entry caused an ANR in the Create Stash dialog, the populated state was seeded in the real app data before reopening the screen and taking the screenshot on branch <code>feat/issues-55-57-recipe-stash-followups</code>.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The real app evidence should show the installed app rendering a populated <code>Fridge</code> stash, and the focused stash tests should pass for the combined direct-match, cross-unit conversion, partial non-cascade, and nested recipe-first resolution paths.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-management-one-item-real.png" alt="Android app Stashes screen showing the Fridge stash with one item in the installed FoodYou app">
+     <figcaption>Real app capture — populated Fridge stash rendered by the installed emulator build</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ $env:JAVA_HOME='C:\Users\admin\.jdks\jbr-21.0.11'; $env:ANDROID_HOME='C:\Users\admin\AppData\Local\Android\Sdk'; $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME; $env:Path="$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"; .\gradlew.bat --no-daemon :app:assembleDebug
+$ adb -s emulator-5554 install -r app\build\outputs\apk\debug\app-debug.apk
+$ adb -s emulator-5554 shell am start -S -W -n com.maksimowiczm.foodyou/.app.infrastructure.android.MainActivity
+$ adb -s emulator-5554 exec-out screencap -p > guidelines/assets/evidence/stash-management-one-item-real.png
+$ .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests "com.maksimowiczm.foodyou.stash.domain.usecase.RecipeStashAvailabilityUseCaseTest" --tests "com.maksimowiczm.foodyou.stash.domain.usecase.LogRecipeToMealWithStashSubtractionUseCaseTest"
+BUILD SUCCESSFUL in 2m 46s
+77 actionable tasks: 3 executed, 74 up-to-date
+exit 0</code></pre>
+ </section>
+
+ <section class="step" data-step="50" data-kind="single">
+   <p class="step-summary">Default adjust mode changed to SetTo with mode-aware amount pre-fill.</p>
 
     <div class="step-how">
       <p>Changed StashBrowserAdjustMode default from ChangeBy to SetTo, swapped FilterChip order, added mode-aware amount reset in State and ViewModel.</p>
@@ -333,7 +383,8 @@ exit 0</code></pre>
     <pre class="script-run"><code>$ rg -n "SetTo" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserState.kt
 23:    SetTo,
 75:        val mode: StashBrowserAdjustMode = StashBrowserAdjustMode.SetTo,
-125:                        StashBrowserAdjustMode.SetTo -> item.quantity.measurement.rawValue.toString()</code></pre>
+125:                        StashBrowserAdjustMode.SetTo -> item.quantity.measurement.rawValue.toString()
+exit 0</code></pre>
   </section>
 
   <section class="step" data-step="51" data-kind="single">
@@ -363,7 +414,8 @@ $ test -f app/src/commonMain/kotlin/com/maksimowiczm/foodyou/stash/domain/usecas
 $ rg -n "moveStashItemUseCase" app/src/commonMain/kotlin/com/maksimowiczm/foodyou/app/ui/stash/browser/StashBrowserActions.kt
 10:import com.maksimowiczm.foodyou.stash.domain.usecase.MoveStashItemUseCase
 34:    private val moveStashItemUseCase: MoveStashItemUseCase,
-51:        moveStashItemUseCase.move(itemId = itemId, targetStashId = targetStashId)</code></pre>
+51:        moveStashItemUseCase.move(itemId = itemId, targetStashId = targetStashId)
+exit 0</code></pre>
 
     <ul class="artifacts">
       <li><code>ManualStashAction.kt</code> — deleted</li>
