@@ -94,42 +94,6 @@ internal sealed interface IngredientRequirement {
     val measurement: StashMeasurement
 }
 
-internal fun Recipe.toProductRequirements(measurement: Measurement): List<ProductRequirement> {
-    val consumedWeight = weight(measurement)
-    return toProductRequirements(consumedWeight)
-}
-
-private fun Recipe.toProductRequirements(consumedWeight: Double): List<ProductRequirement> =
-    unpack(consumedWeight)
-        .flatMap(RecipeIngredient::toProductRequirements)
-        .groupBy { requirement -> requirement.foodId to requirement.measurement.type }
-        .map { (key, requirements) ->
-            val measurement = requirements.fold(requirements.first().measurement.zero()) { acc, requirement ->
-                acc + requirement.measurement
-            }
-            ProductRequirement(
-                foodId = key.first,
-                foodName = requirements.first().foodName,
-                measurement = measurement,
-            )
-        }
-
-private fun RecipeIngredient.toProductRequirements(): List<ProductRequirement> {
-    val ingredientWeight = weight ?: return emptyList()
-    return when (val ingredientFood = food) {
-        is Product ->
-            listOf(
-                ProductRequirement(
-                    foodId = ingredientFood.id,
-                    foodName = ingredientFood.headline,
-                    measurement = ingredientFood.toStashMeasurement(ingredientWeight),
-                )
-            )
-
-        is Recipe -> ingredientFood.toProductRequirements(ingredientWeight)
-    }
-}
-
 internal fun buildRecipeStashAvailability(
     recipe: Recipe,
     measurement: Measurement,
@@ -163,6 +127,7 @@ internal fun buildRecipeStashAvailability(
             ingredient.toAvailabilities(
                 itemsByProductId = itemsByProductId,
                 itemsByRecipeId = itemsByRecipeId,
+                visitedRecipeIds = setOf(recipe.id),
             )
         }
 
@@ -172,7 +137,24 @@ internal fun buildRecipeStashAvailability(
 private fun RecipeIngredient.toAvailabilities(
     itemsByProductId: Map<FoodId.Product, List<StashEntry>>,
     itemsByRecipeId: Map<FoodId.Recipe, List<StashEntry>>,
+    visitedRecipeIds: Set<FoodId.Recipe>,
 ): List<RecipeIngredientStashAvailability> {
+    val requirements =
+        toRequirements(
+            itemsByRecipeId = itemsByRecipeId,
+            visitedRecipeIds = visitedRecipeIds,
+        )
+            .groupRequirements()
+
+    return requirements.map { requirement ->
+        requirement.toAvailability(requirement.candidateItems(itemsByProductId, itemsByRecipeId))
+    }
+}
+
+private fun RecipeIngredient.toRequirements(
+    itemsByRecipeId: Map<FoodId.Recipe, List<StashEntry>>,
+    visitedRecipeIds: Set<FoodId.Recipe>,
+): List<IngredientRequirement> {
     val ingredientWeight = weight ?: return emptyList()
 
     return when (val ingredientFood = food) {
@@ -182,32 +164,80 @@ private fun RecipeIngredient.toAvailabilities(
                     foodId = ingredientFood.id,
                     foodName = ingredientFood.headline,
                     measurement = ingredientFood.toStashMeasurement(ingredientWeight),
-                ).toAvailability(itemsByProductId[ingredientFood.id].orEmpty())
+                )
             )
 
-        is Recipe -> {
-            val requiredMeasurement = StashMeasurement(measurement)
-            val matchingRecipeItems =
-                itemsByRecipeId[ingredientFood.id]
-                    .orEmpty()
-                    .compatibleWith(requiredMeasurement)
-
-            if (matchingRecipeItems.isNotEmpty()) {
-                listOf(
-                    RecipeRequirement(
-                        foodId = ingredientFood.id,
-                        foodName = ingredientFood.headline,
-                        measurement = requiredMeasurement,
-                    ).toAvailability(matchingRecipeItems)
-                )
-            } else {
-                ingredientFood.toProductRequirements(ingredientWeight).map { requirement ->
-                    requirement.toAvailability(itemsByProductId[requirement.foodId].orEmpty())
-                }
-            }
-        }
+        is Recipe ->
+            ingredientFood.toRequirements(
+                requiredMeasurement = measurement,
+                consumedWeight = ingredientWeight,
+                itemsByRecipeId = itemsByRecipeId,
+                visitedRecipeIds = visitedRecipeIds,
+            )
     }
 }
+
+private fun Recipe.toRequirements(
+    requiredMeasurement: Measurement,
+    consumedWeight: Double,
+    itemsByRecipeId: Map<FoodId.Recipe, List<StashEntry>>,
+    visitedRecipeIds: Set<FoodId.Recipe>,
+): List<IngredientRequirement> {
+    val recipeRequirement =
+        RecipeRequirement(
+            foodId = id,
+            foodName = headline,
+            measurement = StashMeasurement(requiredMeasurement),
+        )
+    val matchingRecipeItems =
+        itemsByRecipeId[id]
+            .orEmpty()
+            .compatibleWith(recipeRequirement.measurement)
+
+    if (matchingRecipeItems.isNotEmpty()) {
+        return listOf(recipeRequirement)
+    }
+    if (id in visitedRecipeIds) {
+        return listOf(recipeRequirement)
+    }
+
+    return unpack(consumedWeight)
+        .flatMap { ingredient ->
+            ingredient.toRequirements(
+                itemsByRecipeId = itemsByRecipeId,
+                visitedRecipeIds = visitedRecipeIds + id,
+            )
+        }.groupRequirements()
+}
+
+private fun List<IngredientRequirement>.groupRequirements(): List<IngredientRequirement> =
+    groupBy { requirement -> requirement.foodId to requirement.measurement.type }
+        .map { (_, requirements) -> requirements.merge() }
+
+private fun List<IngredientRequirement>.merge(): IngredientRequirement {
+    val firstRequirement = first()
+    val totalMeasurement =
+        fold(firstRequirement.measurement.zero()) { acc, requirement ->
+            acc + requirement.measurement
+        }
+
+    return when (firstRequirement) {
+        is ProductRequirement ->
+            firstRequirement.copy(measurement = totalMeasurement)
+
+        is RecipeRequirement ->
+            firstRequirement.copy(measurement = totalMeasurement)
+    }
+}
+
+private fun IngredientRequirement.candidateItems(
+    itemsByProductId: Map<FoodId.Product, List<StashEntry>>,
+    itemsByRecipeId: Map<FoodId.Recipe, List<StashEntry>>,
+): List<StashEntry> =
+    when (this) {
+        is ProductRequirement -> itemsByProductId[foodId].orEmpty()
+        is RecipeRequirement -> itemsByRecipeId[foodId].orEmpty()
+    }
 
 private fun IngredientRequirement.toAvailability(
     candidateItems: List<StashEntry>,
