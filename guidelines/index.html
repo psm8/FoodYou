@@ -341,6 +341,33 @@ BUILD SUCCESSFUL in 21s
 exit 0</code></pre>
  </section>
 
+ <section class="step" data-step="57" data-kind="single">
+   <p class="step-summary">Validated the bundled issue 55-57 stash changes against a fresh real app stash-management capture from the installed emulator build, then reran the focused stash availability and subtraction tests covering direct, converted, partial, and nested recipe-first matching.</p>
+
+   <div class="step-how">
+     <p>Built and installed the debug app on <code>emulator-5554</code>, launched the real app with <code>MainActivity</code>, and captured the populated <code>Fridge</code> stash-management screen from the running emulator. Because direct <code>adb shell input text</code> entry caused an ANR in the Create Stash dialog, the populated state was seeded in the real app data before reopening the screen and taking the screenshot on branch <code>feat/issues-55-57-recipe-stash-followups</code>.</p>
+   </div>
+
+   <div class="step-expect">
+     <p>The real app evidence should show the installed app rendering a populated <code>Fridge</code> stash, and the focused stash tests should pass for the combined direct-match, cross-unit conversion, partial non-cascade, and nested recipe-first resolution paths.</p>
+   </div>
+
+   <figure>
+     <img src="assets/evidence/stash-management-one-item-real.png" alt="Android app Stashes screen showing the Fridge stash with one item in the installed FoodYou app">
+     <figcaption>Real app capture — populated Fridge stash rendered by the installed emulator build</figcaption>
+   </figure>
+
+   <h4>Scripts</h4>
+   <pre class="script-run"><code>$ $env:JAVA_HOME='C:\Users\admin\.jdks\jbr-21.0.11'; $env:ANDROID_HOME='C:\Users\admin\AppData\Local\Android\Sdk'; $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME; $env:Path="$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"; .\gradlew.bat --no-daemon :app:assembleDebug
+$ adb -s emulator-5554 install -r app\build\outputs\apk\debug\app-debug.apk
+$ adb -s emulator-5554 shell am start -S -W -n com.maksimowiczm.foodyou/.app.infrastructure.android.MainActivity
+$ adb -s emulator-5554 exec-out screencap -p > guidelines/assets/evidence/stash-management-one-item-real.png
+$ .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests "com.maksimowiczm.foodyou.stash.domain.usecase.RecipeStashAvailabilityUseCaseTest" --tests "com.maksimowiczm.foodyou.stash.domain.usecase.LogRecipeToMealWithStashSubtractionUseCaseTest"
+BUILD SUCCESSFUL in 2m 46s
+77 actionable tasks: 3 executed, 74 up-to-date
+exit 0</code></pre>
+ </section>
+
  <section class="step" data-step="50" data-kind="single">
    <p class="step-summary">Default adjust mode changed to SetTo with mode-aware amount pre-fill.</p>
 
