@@ -86,6 +86,7 @@ internal data class RecipeRequirement(
     override val foodId: FoodId.Recipe,
     override val foodName: String,
     override val measurement: StashMeasurement,
+    val recipe: Recipe,
 ) : IngredientRequirement
 
 internal sealed interface IngredientRequirement {
@@ -188,11 +189,12 @@ private fun Recipe.toRequirements(
             foodId = id,
             foodName = headline,
             measurement = StashMeasurement(requiredMeasurement),
+            recipe = this,
         )
     val matchingRecipeItems =
         itemsByRecipeId[id]
             .orEmpty()
-            .compatibleWith(recipeRequirement.measurement)
+            .compatibleWith(recipeRequirement)
 
     if (matchingRecipeItems.isNotEmpty()) {
         return listOf(recipeRequirement)
@@ -252,7 +254,7 @@ private fun IngredientRequirement.toAvailability(
                 return@forEach
             }
 
-            val allocation = item.allocateFor(remainingMeasurement)
+            val allocation = allocateFrom(item, remainingMeasurement)
             if (allocation == null) {
                 return@forEach
             }
@@ -269,10 +271,22 @@ private fun IngredientRequirement.toAvailability(
     )
 }
 
-private fun List<StashEntry>.compatibleWith(requiredMeasurement: StashMeasurement): List<StashEntry> =
-    filter { item -> item.allocateFor(requiredMeasurement) != null }
+private fun List<StashEntry>.compatibleWith(requirement: IngredientRequirement): List<StashEntry> =
+    filter { item -> requirement.allocateFrom(item) != null }
 
-private fun StashEntry.allocateFor(requiredMeasurement: StashMeasurement): IngredientStashAllocation? {
+private fun IngredientRequirement.allocateFrom(
+    item: StashEntry,
+    requiredMeasurement: StashMeasurement = measurement,
+): IngredientStashAllocation? =
+    when (this) {
+        is ProductRequirement -> item.allocateFor(requiredMeasurement)
+        is RecipeRequirement -> item.allocateFor(requiredMeasurement, recipe)
+    }
+
+private fun StashEntry.allocateFor(
+    requiredMeasurement: StashMeasurement,
+    recipe: Recipe? = null,
+): IngredientStashAllocation? {
     if (measurement.type == requiredMeasurement.type) {
         val allocatedRawValue = minOf(measurement.measurement.rawValue, requiredMeasurement.measurement.rawValue)
         if (allocatedRawValue <= EPSILON) {
@@ -291,6 +305,7 @@ private fun StashEntry.allocateFor(requiredMeasurement: StashMeasurement): Ingre
         item = this,
         availableMeasurement = measurement,
         requiredMeasurement = requiredMeasurement,
+        recipe = recipe,
     )
 }
 
@@ -298,34 +313,59 @@ private fun StashFoodRef.Recipe.allocateConvertedMeasurement(
     item: StashEntry,
     availableMeasurement: StashMeasurement,
     requiredMeasurement: StashMeasurement,
+    recipe: Recipe?,
 ): IngredientStashAllocation? {
-    if (!requiredMeasurement.type.isWeightType()) {
-        return null
-    }
-    if (!availableMeasurement.type.isPortionType()) {
-        return null
-    }
-    if (totalAmount.type != availableMeasurement.type) {
-        return null
-    }
-    if (totalWeight <= EPSILON) {
-        return null
+    if (requiredMeasurement.type.isWeightType() && availableMeasurement.type.isPortionType()) {
+        if (totalAmount.type != availableMeasurement.type) {
+            return null
+        }
+        if (totalWeight <= EPSILON) {
+            return null
+        }
+
+        val availableRequiredRawValue =
+            availableMeasurement.measurement.rawValue * (totalWeight / totalAmount.rawValue)
+        val matchedRequiredRawValue =
+            minOf(availableRequiredRawValue, requiredMeasurement.measurement.rawValue)
+        if (matchedRequiredRawValue <= EPSILON) {
+            return null
+        }
+
+        val allocatedItemRawValue = totalAmount.rawValue * (matchedRequiredRawValue / totalWeight)
+        return IngredientStashAllocation(
+            item = item,
+            measurement = StashMeasurement(Measurement.from(availableMeasurement.type, allocatedItemRawValue)),
+            matchedMeasurement = StashMeasurement(Measurement.from(requiredMeasurement.type, matchedRequiredRawValue)),
+        )
     }
 
-    val availableRequiredRawValue =
-        availableMeasurement.measurement.rawValue * (totalWeight / totalAmount.rawValue)
-    val matchedRequiredRawValue =
-        minOf(availableRequiredRawValue, requiredMeasurement.measurement.rawValue)
-    if (matchedRequiredRawValue <= EPSILON) {
-        return null
+    if (requiredMeasurement.type.isPortionType() && availableMeasurement.type.isWeightType()) {
+        val liveRecipe = recipe ?: return null
+        val requiredWeight = liveRecipe.weight(requiredMeasurement.measurement)
+        if (requiredWeight <= EPSILON) {
+            return null
+        }
+
+        val allocatedItemRawValue =
+            minOf(availableMeasurement.measurement.rawValue, requiredWeight)
+        if (allocatedItemRawValue <= EPSILON) {
+            return null
+        }
+
+        val matchedRequiredRawValue =
+            requiredMeasurement.measurement.rawValue * (allocatedItemRawValue / requiredWeight)
+        if (matchedRequiredRawValue <= EPSILON) {
+            return null
+        }
+
+        return IngredientStashAllocation(
+            item = item,
+            measurement = StashMeasurement(Measurement.from(availableMeasurement.type, allocatedItemRawValue)),
+            matchedMeasurement = StashMeasurement(Measurement.from(requiredMeasurement.type, matchedRequiredRawValue)),
+        )
     }
 
-    val allocatedItemRawValue = totalAmount.rawValue * (matchedRequiredRawValue / totalWeight)
-    return IngredientStashAllocation(
-        item = item,
-        measurement = StashMeasurement(Measurement.from(availableMeasurement.type, allocatedItemRawValue)),
-        matchedMeasurement = StashMeasurement(Measurement.from(requiredMeasurement.type, matchedRequiredRawValue)),
-    )
+    return null
 }
 
 private fun MeasurementType.isWeightType(): Boolean =
