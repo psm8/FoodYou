@@ -20,7 +20,7 @@ An Android food tracking app (KMP/Compose Multiplatform) with a diary module and
 
 **Same-type merge rule**: Within a single stash, products merge by `(productId, measurementType)`. If an entry with that key already exists, quantities merge (e.g. `Gram(300)` + `Gram(200)` → `Gram(500)`); if the existing row is retained at zero, it is revived instead of creating a duplicate. Different measurement types for the same product create separate entries (e.g. `Serving(2)` alongside `Gram(300)`).
 
-**Cross-unit consumption (recipes only)**: A recipe entry stored in servings can be consumed in a weight unit (Gram/Milliliter). The weight is converted back to servings proportionally using `totalWeight / totalAmount` from the batch context on `StashFoodRef.Recipe`. Product entries only support same-type consumption.
+**Cross-unit consumption (recipes only)**: A recipe entry can be consumed across portion units (Serving/Package) and weight units (Gram/Milliliter) in both directions. Portion-based stash entries use the frozen batch context on `StashFoodRef.Recipe`; weight-based stash entries use the live recipe definition to convert portion demands into weight. Product entries only support same-type consumption.
 
 **Cascade deletion**: Deleting a product or recipe that has stash entries also deletes those stash entries (FK CASCADE) and breaks future stash reversal for them. This is acceptable because the user explicitly chose to delete something they no longer use. Diary entries referencing that food still carry their own historical food data independently.
 
@@ -48,6 +48,11 @@ An Android food tracking app (KMP/Compose Multiplatform) with a diary module and
 - "toMeasurement()" on StashQuantity — resolved: eliminated. StashMeasurement wraps Measurement directly; no conversion needed.
 - StashQuantityUnit as parallel enum — resolved: eliminated. StashMeasurement uses MeasurementType (all 6 types, full alignment with diary).
 - Weight conversion at boundary — resolved: no more conversion. StashMeasurement preserves the user's chosen Measurement type. Serving(2) stays as Serving(2), not Gram(300).
+- Cross-unit recipe conversion direction — resolved: symmetric for recipe entries. Portion-based demands may consume weight-based recipe stash, and weight-based demands may consume portion-based recipe stash.
+- Portion-to-weight source of truth for weight-based recipe stash — resolved: use the live recipe definition when the stash row itself is stored in weight units, because the row does not preserve a serving count.
+- Direct recipe match precedence — resolved: if stash contains the exact nested recipe, consume that recipe stash entry instead of flattening to ingredient products.
+- Partial direct recipe fallback — resolved: when a direct nested recipe stash entry is only partially sufficient, do not mix it with ingredient fallback for the remainder.
+- Live recipe drift for weight-based recipe stash — resolved: accept that serving-to-weight conversion follows the current recipe definition for now, rather than adding new frozen batch data.
 - Same-type merge rule — resolved: for products, merge is per stash by `(productId, measurementType)`, and retained zero rows on that key are revived instead of duplicated. Gram merges with Gram, Serving with Serving, but Gram does NOT merge with Serving.
 - Revive reference rule — resolved: reviving a retained zero row preserves its `foodRef`. The food reference is live (reads current catalog data), so there is no stale snapshot to worry about.
 - Unlinked diary return rule — resolved: returning leftovers from a diary entry with no stash link creates a `Product` in the catalog (with `FoodSource.Type.User`) and references it by ID. This follows the same uniqueness and merge rules as catalog-backed products.
