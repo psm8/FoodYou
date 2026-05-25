@@ -1,0 +1,19 @@
+<resources>
+    <string name="action_start_shopping_session">Start shopping session</string>
+    <string name="headline_stash_shopping_session">Shopping session</string>
+    <string name="headline_stash_shopping_preview">Session preview</string>
+    <string name="headline_stash_shopping_selected_product">Selected product</string>
+    <string name="description_stash_shopping_search">Search for a product, add it to the session, and finish when you are ready.</string>
+    <string name="description_stash_shopping_empty">No products added yet.</string>
+    <string name="description_stash_shopping_products_only">Search stays product-first here: recipes may appear in search, but only products can be added to a stash session.</string>
+    <string name="label_stash_shopping_pending_quantity">Amount (%1$s)</string>
+    <string name="label_stash_shopping_total_calories">Preview only: %1$s %2$s</string>
+    <string name="message_stash_shopping_select_product">Select a product to add it to the session.</string>
+    <string name="message_stash_shopping_choose_product">Choose a product result to open the add composer.</string>
+    <string name="message_stash_shopping_invalid_quantity">Enter a valid amount before adding or confirming.</string>
+    <string name="message_stash_shopping_start_failed">Could not start the shopping session for this stash.</string>
+    <string name="message_stash_shopping_add_failed">Could not add this product to the shopping session.</string>
+    <string name="message_stash_shopping_confirm_failed">Could not finish this shopping session right now.</string>
+    <string name="message_stash_shopping_products_only">Only products can be added to a shopping session.</string>
+    <string name="action_remove_session_item">Remove</string>
+</resources>

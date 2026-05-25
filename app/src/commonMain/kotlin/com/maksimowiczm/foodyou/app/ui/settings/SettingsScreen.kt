@@ -32,6 +32,7 @@ fun SettingsScreen(
     onSponsor: () -> Unit,
     onAbout: () -> Unit,
     onMeals: () -> Unit,
+    onStashes: () -> Unit = {},
     onLanguage: () -> Unit,
     onGoals: () -> Unit,
     onPersonalization: () -> Unit,
@@ -85,6 +86,15 @@ fun SettingsScreen(
             item {
                 MealSettingsListItem(
                     onClick = onMeals,
+                    shape = shape,
+                    color = color,
+                    contentColor = contentColor,
+                )
+            }
+
+            item {
+                StashSettingsListItem(
+                    onClick = onStashes,
                     shape = shape,
                     color = color,
                     contentColor = contentColor,

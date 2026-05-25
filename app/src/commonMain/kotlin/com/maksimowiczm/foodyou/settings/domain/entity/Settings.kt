@@ -9,6 +9,7 @@ data class Settings(
     val nutrientsOrder: List<NutrientsOrder>,
     val secureScreen: Boolean,
     val homeCardOrder: List<HomeCard>,
+    val showStashHomeCard: Boolean,
     val expandGoalCard: Boolean,
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,

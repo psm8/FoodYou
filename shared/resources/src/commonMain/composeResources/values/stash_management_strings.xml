@@ -1,0 +1,18 @@
+<resources>
+    <string name="headline_stashes">Stashes</string>
+    <string name="description_stash_management">Create, reorder, and clean up your stash lists.</string>
+    <string name="headline_stash_management">Stash management</string>
+    <string name="description_stash_management_short">Create and organize stash lists.</string>
+    <string name="action_add_stash">Add stash</string>
+    <string name="action_rename_stash">Rename stash</string>
+    <string name="action_delete_stash">Delete stash</string>
+    <string name="headline_create_stash">Create stash</string>
+    <string name="headline_rename_stash">Rename stash</string>
+    <string name="headline_delete_stash">Delete stash</string>
+    <string name="placeholder_stash_name">Stash name</string>
+    <string name="description_stash_management_one_item">1 item, updated %1$s</string>
+    <string name="description_stash_management_many_items">%1$d items, updated %2$s</string>
+    <string name="description_stash_management_empty">Create your first stash to organize leftovers, ingredients, and ready-to-eat meals.</string>
+    <string name="description_delete_empty_stash">Delete "%1$s"?</string>
+    <string name="description_delete_non_empty_stash">Delete "%1$s"? It currently contains %2$d items.</string>
+</resources>

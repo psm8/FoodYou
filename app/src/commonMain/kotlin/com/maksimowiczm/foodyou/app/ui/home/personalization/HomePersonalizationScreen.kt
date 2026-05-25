@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +27,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
@@ -62,14 +64,15 @@ fun HomePersonalizationScreen(
 ) {
     val viewModel: HomePersonalizationViewModel = koinViewModel()
 
-    val order by viewModel.homeOrder.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     HomePersonalizationScreen(
-        order = order,
+        state = state,
         onBack = onBack,
         onMeals = onMeals,
         onGoals = onGoals,
         onReorder = viewModel::updateOrder,
+        onStashVisibilityChange = viewModel::updateStashVisibility,
         modifier = modifier,
     )
 }
@@ -77,14 +80,16 @@ fun HomePersonalizationScreen(
 @OptIn(FlowPreview::class)
 @Composable
 private fun HomePersonalizationScreen(
-    order: List<HomeCard>,
+    state: HomePersonalizationState,
     onBack: () -> Unit,
     onMeals: () -> Unit,
     onGoals: () -> Unit,
     onReorder: (List<HomeCard>) -> Unit,
+    onStashVisibilityChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val lazyListState = rememberLazyListState()
+    val order = state.order
     var localOrder by rememberSaveable(order) { mutableStateOf(order) }
 
     val reorderableLazyListState =
@@ -180,6 +185,11 @@ private fun HomePersonalizationScreen(
                                 HomeCard.Calendar -> CalendarCardContent()
                                 HomeCard.Goals -> GoalsCardContent(onMore = onGoals)
                                 HomeCard.Meals -> MealsCardContent(onMore = onMeals)
+                                HomeCard.Stash ->
+                                    StashCardContent(
+                                        enabled = state.isStashCardEnabled,
+                                        onEnabledChange = onStashVisibilityChange,
+                                    )
                             }
                         }
                     }
@@ -261,6 +271,19 @@ private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
             contentDescription = stringResource(Res.string.action_show_more),
         )
     }
+    DragHandle(modifier = Modifier.hapticDraggableHandle())
+}
+
+@Composable
+context(_: ReorderableCollectionItemScope)
+private fun RowScope.StashCardContent(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Icon(imageVector = Icons.Outlined.Inventory2, contentDescription = null)
+    }
+    Spacer(Modifier.width(16.dp))
+    Text(stringResource(Res.string.headline_stash))
+    Spacer(Modifier.weight(1f))
+    Switch(checked = enabled, onCheckedChange = onEnabledChange)
     DragHandle(modifier = Modifier.hapticDraggableHandle())
 }
 

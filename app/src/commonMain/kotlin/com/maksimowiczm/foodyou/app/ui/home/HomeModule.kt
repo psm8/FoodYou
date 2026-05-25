@@ -6,7 +6,12 @@ import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCardsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationViewModel
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashCardViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddViewModel
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotViewModel
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 
@@ -15,7 +20,7 @@ fun Module.home() {
     viewModel {
         MealsCardsViewModel(
             observeDiaryMealsUseCase = get(),
-            foodEntryRepository = get(),
+            deleteFoodDiaryEntryUseCase = get(),
             manualEntryRepository = get(),
             mealsPreferencesRepository = userPreferencesRepository(),
         )
@@ -30,7 +35,32 @@ fun Module.home() {
             goalsRepository = get(),
         )
     }
-    viewModel { HomePersonalizationViewModel(settingsRepository = userPreferencesRepository()) }
+    viewModel {
+        HomePersonalizationViewModel(
+            settingsRepository = userPreferencesRepository(),
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+        )
+    }
+    viewModel { HomeStashCardViewModel(observeHomeStashSummaryUseCase = get(), observeFoodUseCase = get()) }
+    viewModel { (preferredStashId: StashDefinitionId?) ->
+        HomeStashQuickAddViewModel(
+            preferredStashId = preferredStashId,
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+            createManualStashSnapshotUseCase = get(),
+        )
+    }
+    viewModel { (recipeId: FoodId.Recipe, preferredStashId: StashDefinitionId?) ->
+        HomeStashRecipeSnapshotViewModel(
+            recipeId = recipeId,
+            preferredStashId = preferredStashId,
+            recipeRepository = get(),
+            stashRepository = get(),
+            stashOwnerProvider = get(),
+            addRecipeToStashUseCase = get(),
+        )
+    }
 
     viewModel {
         PollsViewModel(

@@ -10,6 +10,7 @@ import androidx.room.useWriterConnection
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsCyrillicMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
+import com.maksimowiczm.foodyou.app.infrastructure.room.migration.StashCoreMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.deleteUsedFoodEvent
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.fixMeasurementSuggestions
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.foodYou3Migration
@@ -44,6 +45,11 @@ import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MealEntity
 import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MeasurementEntity
 import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipDatabase
 import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntity
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDatabase
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashDefinitionEntity
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMeasurementEntity
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementEntity
+import com.maksimowiczm.foodyou.stash.infrastructure.room.StashMovementOperationTypeConverter
 
 @Database(
     entities =
@@ -65,6 +71,9 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             ManualDiaryEntryEntity::class,
             ProductFts::class,
             RecipeFts::class,
+            StashDefinitionEntity::class,
+            StashMeasurementEntity::class,
+            StashMovementEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -115,12 +124,14 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             /**
              * @see [FoodSearchFtsCyrillicMigration] Add Cyrillic tokenizer support to FTS tables
              */
+            /** @see [StashCoreMigration] Add stash core entities */
         ],
 )
 @TypeConverters(
     FoodSourceTypeConverter::class,
     MeasurementTypeConverter::class,
     FoodEventTypeConverter::class,
+    StashMovementOperationTypeConverter::class,
 )
 abstract class FoodYouDatabase :
     RoomDatabase(),
@@ -128,6 +139,7 @@ abstract class FoodYouDatabase :
     FoodDatabase,
     FoodSearchDatabase,
     FoodDiaryDatabase,
+    StashDatabase,
     SponsorshipDatabase {
 
     override suspend fun <T> withTransaction(block: suspend DomainTransactionScope<T>.() -> T): T =
@@ -139,7 +151,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 32
+        const val VERSION = 33
 
         private val migrations: List<Migration> =
             listOf(
@@ -157,6 +169,7 @@ abstract class FoodYouDatabase :
                 fixMeasurementSuggestions,
                 FoodSearchFtsMigration,
                 FoodSearchFtsCyrillicMigration,
+                StashCoreMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(

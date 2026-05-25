@@ -54,6 +54,8 @@
     <string name="unit_kcal">kcal</string>
     <string name="unit_kilojoules">kJ</string>
     <string name="unit_gram_short" translatable="false">g</string>
+    <string name="unit_kilogram_short" translatable="false">kg</string>
+    <string name="unit_liter_short" translatable="false">l</string>
     <string name="unit_milliliter_short" translatable="false">ml</string>
     <string name="unit_milligram_short" translatable="false">mg</string>
     <string name="unit_microgram_short" translatable="false">µg</string>
@@ -209,6 +211,7 @@
     <string name="error_url_is_not_supported">URL is not supported</string>
     <string name="error_failed_to_download_product">Failed to download product</string>
     <string name="error_product_not_found">Product not found</string>
+    <string name="error_recipe_not_found">Recipe not found</string>
     <string name="error_unknown_error">Unknown error</string>
     <string name="error_measurement_error">Measurement error, please check the serving and package weight</string>
     <string name="error_api_key_is_invalid">API key is invalid</string>
@@ -288,6 +291,12 @@
     <string name="feature_manual_database_import">Manual database import</string>
 
     <string name="action_unpack" description="Unpack the recipe ingredients">Unpack</string>
+    <string name="headline_recipe_stash_subtraction">Stash subtraction</string>
+    <string name="description_recipe_stash_subtraction_all_available">%1$d ingredients are available in stash. Save will subtract them unless you turn this off.</string>
+    <string name="description_recipe_stash_subtraction_partial_available">%1$d of %2$d ingredients are available in stash. Turn this on to subtract the available ingredients.</string>
+    <string name="headline_return_remainder_to_stash">Return remainder to stash</string>
+    <string name="description_return_remainder_to_stash">The difference between the original entry and the current amount will be saved as a new stash item.</string>
+    <string name="action_send_remainder_to_stash">Send remainder to stash</string>
 
     <string name="headline_sponsor">Sponsor</string>
     <string name="description_sponsor_short_2">Support the app's growth</string>

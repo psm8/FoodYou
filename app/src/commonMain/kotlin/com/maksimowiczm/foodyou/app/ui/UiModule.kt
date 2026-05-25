@@ -11,6 +11,11 @@ import com.maksimowiczm.foodyou.app.ui.meal.meal
 import com.maksimowiczm.foodyou.app.ui.onboarding.onboarding
 import com.maksimowiczm.foodyou.app.ui.personalization.personalization
 import com.maksimowiczm.foodyou.app.ui.sponsor.sponsor
+import com.maksimowiczm.foodyou.app.ui.stash.add.stashAddModule
+import com.maksimowiczm.foodyou.app.ui.stash.browser.stashBrowserModule
+import com.maksimowiczm.foodyou.app.ui.stash.consume.consumeStashItemModule
+import com.maksimowiczm.foodyou.app.ui.stash.management.stashManagementModule
+import com.maksimowiczm.foodyou.app.ui.stash.shopping.shoppingSessionModule
 import com.maksimowiczm.foodyou.app.ui.theme.theme
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import org.koin.core.module.dsl.viewModel
@@ -30,5 +35,10 @@ val uiModule = module {
     onboarding()
     personalization()
     sponsor()
+    stashBrowserModule()
+    stashAddModule()
+    stashManagementModule()
+    shoppingSessionModule()
+    consumeStashItemModule()
     theme()
 }

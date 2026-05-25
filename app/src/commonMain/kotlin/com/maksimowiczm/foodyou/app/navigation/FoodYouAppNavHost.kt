@@ -27,14 +27,23 @@ import com.maksimowiczm.foodyou.app.ui.goals.master.GoalsScreen
 import com.maksimowiczm.foodyou.app.ui.goals.setup.DailyGoalsScreen
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardSettings
 import com.maksimowiczm.foodyou.app.ui.home.master.HomeScreen
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationScreen
+import com.maksimowiczm.foodyou.app.ui.home.stash.HomeStashRecipeSnapshotScreen
 import com.maksimowiczm.foodyou.app.ui.language.LanguageScreen
 import com.maksimowiczm.foodyou.app.ui.meal.MealSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizationScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizeNutritionFactsScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddProductScreen
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddDestination
+import com.maksimowiczm.foodyou.app.ui.stash.add.StashAddSearchScreen
+import com.maksimowiczm.foodyou.app.ui.stash.browser.StashBrowserScreen
+import com.maksimowiczm.foodyou.app.ui.stash.consume.ConsumeStashItemScreen
+import com.maksimowiczm.foodyou.app.ui.stash.management.StashManagementScreen
+import com.maksimowiczm.foodyou.app.ui.stash.shopping.ShoppingSessionScreen
 import com.maksimowiczm.foodyou.app.ui.theme.ThemeScreen
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
@@ -42,6 +51,8 @@ import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashDefinitionId
+import com.maksimowiczm.foodyou.stash.domain.entity.StashEntryId
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -80,6 +91,22 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                         else -> error("Either foodEntryId or manualEntryId must be non-null")
                     }
                 },
+                onConsumeStashItemClick = { itemId ->
+                    navController.navigateSingleTop(ConsumeStashItem(itemId.value))
+                },
+                onViewStashClick = { stashId ->
+                    if (stashId != null) {
+                        navController.navigateSingleTop(StashBrowser(stashId.value))
+                    } else {
+                        navController.navigateSingleTop(StashManagement)
+                    }
+                },
+                onAddToStashClick = { stashId ->
+                    navController.navigateSingleTop(StashAddSearch(stashId?.value))
+                },
+                onQuickAddToStashClick = { stashId ->
+                    navController.navigateSingleTop(StashQuickAdd(stashId?.value))
+                },
             )
         }
         forwardBackwardComposable<Settings> {
@@ -88,10 +115,64 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onSponsor = { navController.navigateSingleTop(Sponsor) },
                 onAbout = { navController.navigateSingleTop(About) },
                 onMeals = { navController.navigateSingleTop(MealSetup) },
+                onStashes = { navController.navigateSingleTop(StashManagement) },
                 onLanguage = { navController.navigateSingleTop(Language) },
                 onGoals = { navController.navigateSingleTop(GoalsSetup) },
                 onPersonalization = { navController.navigateSingleTop(Personalization) },
                 onDatabase = { navController.navigateSingleTop(DatabaseSettings) },
+            )
+        }
+        forwardBackwardComposable<StashManagement> {
+            StashManagementScreen(
+                onBack = { navController.popBackStackInclusive<StashManagement>() },
+                onOpenStash = { stashId ->
+                    navController.navigateSingleTop(StashBrowser(stashId.value))
+                },
+                onAddToStash = { stashId ->
+                    navController.navigateSingleTop(StashAddSearch(stashId.value))
+                },
+                onQuickAddToStash = { stashId ->
+                    navController.navigateSingleTop(StashQuickAdd(stashId.value))
+                },
+                onStartShoppingSession = { stashId ->
+                    navController.navigateSingleTop(StashShopping(stashId.value))
+                },
+            )
+        }
+        forwardBackwardComposable<StashShopping> {
+            val (stashId) = it.toRoute<StashShopping>()
+
+            ShoppingSessionScreen(
+                preferredStashId = stashId,
+                onBack = { navController.popBackStackInclusive<StashShopping>() },
+                onFinished = { targetStashId ->
+                    navController.popBackStackInclusive<StashShopping>()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
+                onUpdateOpenFoodFactsCredentials = {
+                    navController.navigateSingleTop(OpenFoodFactsLogin)
+                },
+            )
+        }
+        forwardBackwardComposable<StashBrowser> {
+            val (stashId) = it.toRoute<StashBrowser>()
+
+            StashBrowserScreen(
+                stashId = StashDefinitionId(stashId),
+                onBack = { navController.popBackStackInclusive<StashBrowser>() },
+                onConsumeItem = { itemId ->
+                    navController.navigateSingleTop(ConsumeStashItem(itemId.value))
+                },
+            )
+        }
+        forwardBackwardComposable<ConsumeStashItem> {
+            val (itemId) = it.toRoute<ConsumeStashItem>()
+
+            ConsumeStashItemScreen(
+                itemId = StashEntryId(itemId),
+                onBack = { navController.popBackStackInclusive<ConsumeStashItem>() },
+                onConsumed = { navController.popBackStackInclusive<ConsumeStashItem>() },
             )
         }
         forwardBackwardComposable<Language> {
@@ -362,6 +443,84 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onGoals = { navController.navigateSingleTop(GoalsPersonalization) },
             )
         }
+        forwardBackwardComposable<StashAddSearch> {
+            val (stashId) = it.toRoute<StashAddSearch>()
+
+            StashAddSearchScreen(
+                onBack = { navController.popBackStackInclusive<StashAddSearch>() },
+                onFoodSelected = { destination ->
+                    when (destination) {
+                        is StashAddDestination.Product ->
+                            navController.navigateSingleTop(
+                                StashAddProduct(
+                                    productId = destination.productId.id,
+                                    stashId = stashId,
+                                    measurement = destination.measurement,
+                                )
+                            )
+
+                        is StashAddDestination.RecipeSnapshot ->
+                            navController.navigateSingleTop(
+                                StashAddRecipeSnapshot(
+                                    recipeId = destination.recipeId.id,
+                                    stashId = stashId,
+                                )
+                            )
+                    }
+                },
+                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
+                onUpdateOpenFoodFactsCredentials = {
+                    navController.navigateSingleTop(OpenFoodFactsLogin)
+                },
+            )
+        }
+        forwardBackwardComposable<StashAddProduct> {
+            val route = it.toRoute<StashAddProduct>()
+            val closeStashAddProductFlow: () -> Unit = {
+                navController.popBackStackInclusive<StashAddProduct>()
+                navController.popBackStackInclusive<StashAddSearch>()
+            }
+
+            StashAddProductScreen(
+                productId = route.productId,
+                preferredStashId = route.stashId,
+                initialMeasurement = route.measurement,
+                onBack = { navController.popBackStackInclusive<StashAddProduct>() },
+                onSaved = { targetStashId ->
+                    closeStashAddProductFlow()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+            )
+        }
+        forwardBackwardComposable<StashAddRecipeSnapshot> {
+            val (recipeId, stashId) = it.toRoute<StashAddRecipeSnapshot>()
+            val closeStashAddRecipeFlow: () -> Unit = {
+                navController.popBackStackInclusive<StashAddRecipeSnapshot>()
+                navController.popBackStackInclusive<StashAddSearch>()
+            }
+
+            HomeStashRecipeSnapshotScreen(
+                recipeId = recipeId,
+                preferredStashId = stashId,
+                onBack = { navController.popBackStackInclusive<StashAddRecipeSnapshot>() },
+                onSaved = { targetStashId ->
+                    closeStashAddRecipeFlow()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+            )
+        }
+        forwardBackwardComposable<StashQuickAdd> {
+            val (stashId) = it.toRoute<StashQuickAdd>()
+
+            HomeStashQuickAddScreen(
+                preferredStashId = stashId,
+                onBack = { navController.popBackStackInclusive<StashQuickAdd>() },
+                onSaved = { targetStashId ->
+                    navController.popBackStackInclusive<StashQuickAdd>()
+                    navController.navigateSingleTop(StashBrowser(targetStashId.value))
+                },
+            )
+        }
         forwardBackwardComposable<NutritionFactsPersonalization> {
             PersonalizeNutritionFactsScreen(
                 onBack = { navController.popBackStackInclusive<NutritionFactsPersonalization>() }
@@ -389,6 +548,14 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object About
 
 @Serializable private object Language
+
+@Serializable private object StashManagement
+
+@Serializable private data class StashShopping(val stashId: Long)
+
+@Serializable private data class StashBrowser(val stashId: Long)
+
+@Serializable private data class ConsumeStashItem(val itemId: Long)
 
 @Serializable private object ThemeSettings
 
@@ -477,6 +644,39 @@ private class FoodDiaryCreateEntry(
 @Serializable private data class FoodDiaryUpdateEntry(val foodEntryId: Long)
 
 @Serializable private object Personalization
+
+@Serializable private data class StashAddSearch(val stashId: Long?)
+
+@Serializable
+private class StashAddProduct(
+    val productId: Long,
+    val stashId: Long?,
+    private val measurementType: MeasurementType?,
+    private val measurementValue: Double?,
+) {
+    constructor(
+        productId: Long,
+        stashId: Long?,
+        measurement: Measurement?,
+    ) : this(
+        productId = productId,
+        stashId = stashId,
+        measurementType = measurement?.type,
+        measurementValue = measurement?.rawValue,
+    )
+
+    val measurement: Measurement?
+        get() =
+            if (measurementType != null && measurementValue != null) {
+                Measurement.from(type = measurementType, rawValue = measurementValue)
+            } else {
+                null
+            }
+}
+
+@Serializable private data class StashAddRecipeSnapshot(val recipeId: Long, val stashId: Long?)
+
+@Serializable private data class StashQuickAdd(val stashId: Long?)
 
 @Serializable private object HomePersonalization
 

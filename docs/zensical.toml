@@ -13,6 +13,7 @@ nav = [
     "index.md",
     "privacy-policy.md",
     "contribute.md",
+    "architecture/stash-module.md",
 ]
 
 [project.extra.consent]

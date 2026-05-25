@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.normalizeHomeCardOrder
 import kotlin.time.Instant
 
 internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
@@ -26,6 +27,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             nutrientsOrder = this.getNutrientsOrder(SettingsPreferencesKeys.nutrientsOrder),
             secureScreen = this[SettingsPreferencesKeys.secureScreen] ?: false,
             homeCardOrder = this.getHomeCardOrder(SettingsPreferencesKeys.homeCardOrder),
+            showStashHomeCard = this[SettingsPreferencesKeys.showStashHomeCard] ?: true,
             expandGoalCard = this[SettingsPreferencesKeys.expandGoalCard] ?: true,
             onboardingFinished = this[SettingsPreferencesKeys.onboardingFinished] ?: false,
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
@@ -39,6 +41,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setNutrientsOrder(SettingsPreferencesKeys.nutrientsOrder, updated.nutrientsOrder)
         this[SettingsPreferencesKeys.secureScreen] = updated.secureScreen
         setHomeCardOrder(SettingsPreferencesKeys.homeCardOrder, updated.homeCardOrder)
+        this[SettingsPreferencesKeys.showStashHomeCard] = updated.showStashHomeCard
         this[SettingsPreferencesKeys.expandGoalCard] = updated.expandGoalCard
         this[SettingsPreferencesKeys.onboardingFinished] = updated.onboardingFinished
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
@@ -66,10 +69,14 @@ private fun Preferences.getNutrientsOrder(key: Preferences.Key<String>): List<Nu
 private fun MutablePreferences.setHomeCardOrder(
     key: Preferences.Key<String>,
     value: List<HomeCard>,
-) = setWithNull(key, value.joinToString(",") { it.ordinal.toString() })
+) = setWithNull(key, normalizeHomeCardOrder(value).joinToString(",") { it.ordinal.toString() })
 
 private fun Preferences.getHomeCardOrder(key: Preferences.Key<String>): List<HomeCard> =
-    runCatching { this[key]?.split(",")?.map { HomeCard.entries[it.toInt()] } }.getOrNull()
+    (this[key]
+        ?.split(",")
+        ?.mapNotNull(String::toIntOrNull)
+        ?.mapNotNull { index -> HomeCard.entries.getOrNull(index) }
+        ?.let(::normalizeHomeCardOrder))
         ?: HomeCard.defaultOrder
 
 private fun MutablePreferences.setEnergyFormat(key: Preferences.Key<Int>, value: EnergyFormat) =
@@ -130,6 +137,7 @@ private object SettingsPreferencesKeys {
     val nutrientsOrder = stringPreferencesKey("settings:nutrientsOrder")
     val secureScreen = booleanPreferencesKey("settings:secureScreen")
     val homeCardOrder = stringPreferencesKey("settings:homeCardOrder")
+    val showStashHomeCard = booleanPreferencesKey("settings:showStashHomeCard")
     val expandGoalCard = booleanPreferencesKey("settings:expandGoalCard")
     val onboardingFinished = booleanPreferencesKey("settings:onboardingFinished")
     val energyFormat = intPreferencesKey("settings:energyFormat")

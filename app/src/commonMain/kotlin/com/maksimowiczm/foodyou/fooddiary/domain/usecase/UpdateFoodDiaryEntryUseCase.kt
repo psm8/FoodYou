@@ -7,9 +7,12 @@ import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
+import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
+import com.maksimowiczm.foodyou.stash.domain.usecase.RestoreLinkedDiaryEntryStashError
+import com.maksimowiczm.foodyou.stash.domain.usecase.RestoreLinkedDiaryEntryStashUseCase
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDate
 
@@ -19,11 +22,16 @@ sealed interface UpdateFoodDiaryEntryError {
     data object InvalidMeasurement : UpdateFoodDiaryEntryError
 
     data object MealNotFound : UpdateFoodDiaryEntryError
+
+    data class StashRestoreFailed(
+        val error: RestoreLinkedDiaryEntryStashError,
+    ) : UpdateFoodDiaryEntryError
 }
 
 class UpdateFoodDiaryEntryUseCase(
     private val mealRepository: MealRepository,
     private val entryRepository: FoodDiaryEntryRepository,
+    private val restoreLinkedDiaryEntryStashUseCase: RestoreLinkedDiaryEntryStashUseCase,
     private val dateProvider: DateProvider,
     private val transactionProvider: TransactionProvider,
     private val logger: Logger,
@@ -94,6 +102,16 @@ class UpdateFoodDiaryEntryUseCase(
                     message = { "Meal with ID $mealId not found" },
                 )
             }
+
+            restoreLinkedDiaryEntryStashUseCase
+                .rebalanceEditedEntry(entry = entry, updatedMeasurement = measurement)
+                .onError { error ->
+                    return@withTransaction logger.logAndReturnFailure(
+                        tag = TAG,
+                        error = UpdateFoodDiaryEntryError.StashRestoreFailed(error),
+                        message = { "Failed to rebalance linked stash movements for diary entry $id." },
+                    )
+                }
 
             val updated =
                 entry.copy(

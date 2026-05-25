@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -29,6 +31,7 @@ import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -54,6 +57,8 @@ import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.stash.domain.usecase.RecipeStashAvailability
+import com.maksimowiczm.foodyou.stash.domain.usecase.StashSubtractionMode
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import kotlinx.datetime.LocalDate
@@ -91,6 +96,7 @@ fun AddEntryScreen(
     val suggestions = viewModel.suggestions.collectAsStateWithLifecycle().value
     val possibleTypes = viewModel.possibleMeasurementTypes.collectAsStateWithLifecycle().value
     val measurementSuggestion by viewModel.suggestedMeasurement.collectAsStateWithLifecycle()
+    val recipeStashAvailability = viewModel.recipeStashAvailability.collectAsStateWithLifecycle().value
 
     // This is stupid that it is here but it's going to be deleted in 4.0.0
     val selectedMeasurement =
@@ -135,6 +141,23 @@ fun AddEntryScreen(
                 selectedMeasurement = selectedMeasurement,
             )
 
+        LaunchedEffect(state.measurementState.measurement) {
+            viewModel.setSelectedMeasurement(state.measurementState.measurement)
+        }
+
+        val subtractFromStashDefault =
+            remember(recipeStashAvailability) {
+                recipeStashAvailability?.areAllIngredientsAvailable == true &&
+                    recipeStashAvailability.ingredients.isNotEmpty()
+            }
+        var subtractFromStash by remember(
+            recipeStashAvailability?.availableIngredientsCount,
+            recipeStashAvailability?.partiallyAvailableIngredientsCount,
+            recipeStashAvailability?.unavailableIngredientsCount,
+        ) {
+            mutableStateOf(subtractFromStashDefault)
+        }
+
         AddEntryScreen(
             onBack = onBack,
             onAdd = {
@@ -148,6 +171,11 @@ fun AddEntryScreen(
                         measurement = state.measurementState.measurement,
                         mealId = selectedMealId,
                         date = state.dateState.selectedDate,
+                        subtractMode =
+                            recipeStashAvailability.toSubtractMode(
+                                food = food,
+                                subtractFromStash = subtractFromStash,
+                            ),
                     )
                 }
             },
@@ -171,6 +199,9 @@ fun AddEntryScreen(
             food = food,
             history = events,
             state = state,
+            recipeStashAvailability = recipeStashAvailability,
+            subtractFromStash = subtractFromStash,
+            onSubtractFromStashChange = { subtractFromStash = it },
             animatedVisibilityScope = animatedVisibilityScope,
             modifier = modifier,
         )
@@ -188,6 +219,9 @@ private fun AddEntryScreen(
     food: FoodModel,
     history: List<FoodHistory>,
     state: FoodMeasurementFormState,
+    recipeStashAvailability: RecipeStashAvailability?,
+    subtractFromStash: Boolean,
+    onSubtractFromStashChange: (Boolean) -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
@@ -276,6 +310,18 @@ private fun AddEntryScreen(
                 ChipsMealPicker(state = state.mealsState, modifier = Modifier.padding(8.dp))
                 HorizontalDivider(Modifier.padding(horizontal = 8.dp))
                 MeasurementPicker(state = state.measurementState, modifier = Modifier.padding(8.dp))
+            }
+
+            if (food is RecipeModel && recipeStashAvailability?.hasAnyAvailableIngredients == true) {
+                item {
+                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
+                    RecipeStashSubtractionSection(
+                        availability = recipeStashAvailability,
+                        subtractFromStash = subtractFromStash,
+                        onSubtractFromStashChange = onSubtractFromStashChange,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
 
             if (food is RecipeModel) {
@@ -399,4 +445,60 @@ private fun DeleteDialog(
         title = { Text(stringResource(Res.string.headline_delete_food)) },
         text = { Text(stringResource(Res.string.description_delete_food)) },
     )
+}
+
+@Composable
+private fun RecipeStashSubtractionSection(
+    availability: RecipeStashAvailability,
+    subtractFromStash: Boolean,
+    onSubtractFromStashChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.headline_recipe_stash_subtraction),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text =
+                        if (availability.areAllIngredientsAvailable) {
+                            stringResource(
+                                Res.string.description_recipe_stash_subtraction_all_available,
+                                availability.ingredients.size,
+                            )
+                        } else {
+                            stringResource(
+                                Res.string.description_recipe_stash_subtraction_partial_available,
+                                availability.availableIngredientsCount,
+                                availability.ingredients.size,
+                            )
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Switch(checked = subtractFromStash, onCheckedChange = onSubtractFromStashChange)
+        }
+    }
+}
+
+private fun RecipeStashAvailability?.toSubtractMode(
+    food: FoodModel,
+    subtractFromStash: Boolean,
+): StashSubtractionMode {
+    if (food !is RecipeModel || !subtractFromStash || this == null) {
+        return StashSubtractionMode.Skip
+    }
+
+    return if (areAllIngredientsAvailable) {
+        StashSubtractionMode.Auto
+    } else {
+        StashSubtractionMode.Partial
+    }
 }
